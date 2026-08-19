@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>乱世·弈界 - 局域网联机版</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{overflow:hidden;background:#1a1a2e;font-family:'STKaiti','KaiTi',serif;user-select:none;color:#eee}
+canvas{display:block;cursor:crosshair}
+.screen{position:fixed;inset:0;z-index:200;background:radial-gradient(ellipse at center,#2a2a4e 0%,#12121f 100%);display:flex;flex-direction:column;justify-content:center;align-items:center;overflow-y:auto;padding:20px}
+h1.title{font-size:48px;color:#ffd700;letter-spacing:10px;text-shadow:0 0 40px rgba(255,215,0,.6);margin-bottom:8px}
+.sub{color:#aaa;font-size:17px;margin-bottom:25px;letter-spacing:3px}
+.setup-panel{background:rgba(255,255,255,.05);border:2px solid #555;border-radius:14px;padding:22px 30px;margin-top:15px;text-align:center;max-width:600px;width:90%}
+.setup-panel .row{margin:10px 0;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
+.setup-panel label{font-size:17px;color:#ddd}
+.setup-panel input,.setup-panel select{width:70px;padding:7px 10px;font-size:17px;background:#2a2a4e;color:#ffd700;border:2px solid #d4af37;border-radius:8px;text-align:center;font-family:inherit}
+.setup-panel .hint{font-size:12px;color:#888;margin-top:5px}
+.big-btn{margin:8px;padding:14px 50px;font-size:22px;background:#c0392b;color:#fff;border:2px solid #fff;border-radius:10px;cursor:pointer;font-family:inherit;transition:.3s}
+.big-btn:hover{background:#e74c3c;transform:scale(1.06)}
+.big-btn.secondary{background:#2980b9}
+.big-btn.secondary:hover{background:#3498db}
+.big-btn:disabled{opacity:.4;pointer-events:none}
+.input-text{padding:10px 15px;font-size:18px;background:#2a2a4e;color:#ffd700;border:2px solid #d4af37;border-radius:8px;text-align:center;font-family:inherit;width:200px}
+.room-list{margin:15px 0;max-height:200px;overflow-y:auto;width:90%;max-width:500px}
+.room-item{display:flex;justify-content:space-between;align-items:center;padding:10px 18px;margin:5px 0;background:rgba(255,255,255,.06);border:1px solid #555;border-radius:8px;cursor:pointer;transition:.2s}
+.room-item:hover{border-color:#ffd700;background:rgba(255,215,0,.08)}
+.room-item .ri-id{color:#ffd700;font-weight:bold;font-size:16px}
+.room-item .ri-info{color:#aaa;font-size:13px}
+.status-bar{position:fixed;top:0;left:0;right:0;padding:6px 15px;background:rgba(20,20,40,.95);border-bottom:2px solid #d4af37;z-index:10;display:flex;justify-content:space-between;align-items:center;font-size:14px}
+.status-bar .conn{font-size:12px;padding:3px 10px;border-radius:4px}
+.conn-ok{background:#27ae60;color:#fff}
+.conn-err{background:#c0392b;color:#fff}
+.player-list{margin:15px 0;text-align:center}
+.player-tag{display:inline-block;padding:6px 16px;margin:4px;border-radius:8px;font-size:15px;font-weight:bold;border:2px solid #555}
+.player-tag.ready{border-color:#2ecc71;color:#2ecc71}
+.player-tag.me{background:rgba(255,215,0,.15)}
+.pick-status{font-size:19px;color:#ffd700;margin:15px 0}
+.hidden{display:none!important}
+.faction-row{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;justify-content:center}
+.faction-pick{width:90px;padding:12px 6px;border-radius:10px;text-align:center;cursor:pointer;border:3px solid #444;transition:.2s;font-size:16px;font-weight:bold}
+.faction-pick:hover{transform:translateY(-4px)}
+.faction-pick.taken{opacity:.3;pointer-events:none}
+.faction-pick.chosen{border-color:#ffd700;box-shadow:0 0 20px rgba(255,215,0,.5)}
+.general-grid{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;max-width:1100px}
+.general-card{width:145px;padding:12px 8px;background:rgba(255,255,255,.06);border:2px solid #555;border-radius:10px;cursor:pointer;transition:.2s;text-align:center}
+.general-card:hover{border-color:#ffd700;transform:translateY(-5px)}
+.general-card.picked{border-color:#2ecc71;background:rgba(46,204,113,.2);box-shadow:0 0 12px rgba(46,204,113,.4)}
+.general-card .gname{font-size:18px;font-weight:bold;color:#ffd700}
+.general-card .ghp{font-size:12px;color:#2ecc71;margin:3px 0}
+.general-card .gskill{font-size:13px;color:#7bed9f;margin:3px 0}
+.general-card .gdesc{font-size:11px;color:#bbb;line-height:1.3;min-height:44px}
+#ui-top{position:fixed;top:30px;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:6px 12px;background:rgba(20,20,40,.93);border-bottom:2px solid #d4af37;z-index:10;flex-wrap:wrap}
+.fbadge{padding:3px 8px;border-radius:4px;font-size:11px;font-weight:bold;color:#fff;margin:1px;white-space:nowrap}
+.fbadge.dead{opacity:.35;text-decoration:line-through}
+#turn-info{color:#ffd700;font-size:15px;font-weight:bold}
+#equip-panel{position:fixed;top:70px;right:8px;width:210px;max-height:calc(100vh - 240px);overflow-y:auto;background:rgba(15,15,30,.92);border:1px solid #d4af37;border-radius:8px;padding:8px;z-index:12;font-size:12px}
+#equip-panel h3{color:#ffd700;font-size:13px;text-align:center;margin-bottom:5px;border-bottom:1px solid #555;padding-bottom:4px}
+.eq-unit{border:1px solid #444;border-radius:6px;margin-bottom:4px;overflow:hidden;cursor:pointer;transition:.2s}
+.eq-unit:hover{border-color:#d4af37}
+.eq-head{display:flex;align-items:center;gap:5px;padding:4px 6px;background:rgba(255,255,255,.05);font-size:12px}
+.eq-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.eq-name{font-weight:bold;font-size:12px}
+.eq-hp{margin-left:auto;color:#2ecc71;font-size:11px}
+.eq-icons{font-size:10px;color:#bbb;padding:2px 6px}
+.eq-detail{display:none;padding:5px;background:rgba(0,0,0,.4);line-height:1.4;font-size:11px;border-top:1px dashed #555}
+.eq-unit.open .eq-detail{display:block}
+.eq-detail .sk{color:#7bed9f}.eq-detail .wp{color:#f39c12}.eq-detail .ar{color:#74b9ff}
+#tooltip{position:fixed;display:none;background:rgba(10,10,25,.96);border:1px solid #d4af37;border-radius:8px;padding:9px 12px;font-size:12.5px;line-height:1.6;z-index:60;pointer-events:none;max-width:250px;box-shadow:0 5px 20px rgba(0,0,0,.6)}
+#hand-area{position:fixed;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:8px;padding:10px 14px;background:rgba(20,15,10,.95);border:2px solid #d4af37;border-radius:10px;max-width:96vw;overflow-x:auto;z-index:20;align-items:flex-end}
+.card{width:95px;height:130px;border:2px solid #5c4033;border-radius:7px;display:flex;flex-direction:column;justify-content:space-between;align-items:center;cursor:pointer;transition:all .2s;color:#fff;text-shadow:1px 1px 2px #000;padding:5px 3px;flex-shrink:0}
+.card:hover{transform:translateY(-14px) scale(1.05);box-shadow:0 8px 20px rgba(0,0,0,.6);z-index:30}
+.card.selected{transform:translateY(-22px);box-shadow:0 0 20px #ffd700;border-color:#ffd700;z-index:31}
+.card-top{font-weight:bold;font-size:14px;text-align:center;line-height:1.2;margin-top:3px}
+.card-elem{font-size:10px;opacity:.85}
+.card-desc{background:rgba(255,255,255,.92);color:#222;font-size:11px;line-height:1.3;padding:3px 4px;border-radius:4px;text-align:center;width:94%;text-shadow:none;margin-bottom:3px;min-height:32px;display:flex;align-items:center;justify-content:center}
+.elem-jin{background:linear-gradient(160deg,#95a5a6,#dfe6e9);color:#2d3436!important}
+.elem-mu{background:linear-gradient(160deg,#1e8449,#58d68d)}
+.elem-shui{background:linear-gradient(160deg,#1a5276,#5dade2)}
+.elem-huo{background:linear-gradient(160deg,#922b21,#f1948a)}
+.elem-tu{background:linear-gradient(160deg,#935116,#f0b27a)}
+.elem-equip{background:linear-gradient(160deg,#6c3483,#bb8fce)}
+#msg-box{position:fixed;top:22%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.9);color:#ffd700;padding:16px 35px;border-radius:10px;font-size:20px;pointer-events:none;opacity:0;transition:opacity .3s;border:2px solid #d4af37;z-index:50;white-space:pre-line;text-align:center;max-width:80vw}
+#end-turn-btn{position:fixed;right:18px;bottom:40px;padding:12px 28px;background:linear-gradient(135deg,#8b4513,#a0522d);color:#ffd700;border-radius:8px;cursor:pointer;font-size:18px;border:2px solid #d4af37;z-index:20;font-weight:bold;transition:.3s}
+#end-turn-btn:hover{transform:scale(1.08);box-shadow:0 0 18px rgba(212,175,55,.5)}
+#turn-overlay{position:fixed;inset:0;background:rgba(5,5,15,.98);z-index:150;display:none;flex-direction:column;justify-content:center;align-items:center}
+#turn-overlay h1{font-size:44px;margin-bottom:12px}
+#turn-overlay p{font-size:18px;color:#aaa;margin-bottom:35px}
+#turn-overlay button{padding:14px 50px;font-size:24px;background:#c0392b;color:#fff;border:2px solid #fff;border-radius:10px;cursor:pointer;font-family:inherit;transition:.3s}
+#turn-overlay button:hover{background:#e74c3c;transform:scale(1.08)}
+#over-panel{position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:180;display:none;flex-direction:column;justify-content:center;align-items:center}
+#over-panel h1{font-size:58px;margin-bottom:15px;text-shadow:0 0 40px currentColor}
+#over-panel p{font-size:22px;margin-bottom:35px;color:#ddd;text-align:center;max-width:500px}
+#over-panel button{padding:14px 45px;background:#c0392b;color:#fff;border:2px solid #fff;border-radius:10px;font-size:22px;cursor:pointer;font-family:inherit;transition:.3s}
+#over-panel button:hover{transform:scale(1.1);background:#e74c3c}
+#response-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:160;display:none;flex-direction:column;justify-content:center;align-items:center}
+#response-overlay .resp-title{font-size:28px;color:#ffd700;margin-bottom:10px}
+#response-overlay .resp-desc{font-size:16px;color:#ccc;margin-bottom:20px;text-align:center;max-width:450px;line-height:1.5}
+#response-overlay .resp-cards{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:20px}
+#response-overlay .resp-btn-skip{padding:10px 35px;font-size:17px;background:#555;color:#fff;border:2px solid #888;border-radius:8px;cursor:pointer;font-family:inherit;transition:.3s}
+#response-overlay .resp-btn-skip:hover{background:#777}
+.waiting-msg{color:#f39c12;font-size:16px;margin-top:15px;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+</style>
+</head>
+<body>
+
+<!-- ====== 联机大厅 ====== -->
+<div id="lobby-screen" class="screen">
+    <h1 class="title">乱世·弈界</h1>
+    <div class="sub">—— 局域网联机版 ——</div>
+    <div class="setup-panel">
+        <div class="row"><label>昵称：</label><input type="text" id="inp-name" class="input-text" value="" placeholder="输入昵称" maxlength="8"></div>
+        <div class="row">
+            <button class="big-btn" onclick="netCreateRoom()">创建房间</button>
+            <button class="big-btn secondary" onclick="netRefreshRooms()">刷新房间</button>
+        </div>
+        <div class="row"><label>加入房间：</label><input type="text" id="inp-room" class="input-text" placeholder="房间号" maxlength="6" style="width:120px;text-transform:uppercase"><button class="big-btn secondary" style="padding:10px 25px;font-size:18px" onclick="netJoinRoom()">加入</button></div>
+        <div class="room-list" id="room-list"></div>
+        <div id="lobby-status" style="color:#888;font-size:13px;margin-top:8px"></div>
+    </div>
+</div>
+
+<!-- ====== 等待大厅 ====== -->
+<div id="wait-screen" class="screen hidden">
+    <h1 class="title" style="font-size:36px">等待玩家</h1>
+    <div class="sub" id="wait-room-id"></div>
+    <div class="player-list" id="wait-players"></div>
+    <div class="setup-panel" id="wait-config">
+        <div class="row"><label>队伍数量：</label><select id="cfg-teams"><option value="2">2队</option><option value="3">3队</option><option value="4">4队</option></select></div>
+        <div class="row"><label>AI势力数：</label><input type="number" id="cfg-ai" min="0" max="9" value="2"></div>
+        <div class="hint">仅房主可配置，其他人直接准备</div>
+    </div>
+    <button class="big-btn" id="btn-ready" onclick="netReady()">✅ 准备</button>
+    <div class="waiting-msg" id="wait-msg"></div>
+</div>
+
+<!-- ====== 选将 ====== -->
+<div id="pick-screen" class="screen hidden">
+    <h1 class="title" style="font-size:38px" id="pick-title">选将</h1>
+    <div class="sub" id="pick-sub"></div>
+    <div class="faction-row" id="faction-row"></div>
+    <div class="general-grid" id="general-grid"></div>
+    <div class="pick-status" id="pick-status"></div>
+    <button class="big-btn" id="confirm-pick" style="display:none" onclick="netConfirmPick()">确认出战</button>
+    <div class="waiting-msg" id="pick-wait">等待其他玩家选将...</div>
+</div>
+
+<!-- ====== 战斗UI ====== -->
+<div class="status-bar hidden" id="status-bar"><span id="sb-info">乱世·弈界</span><span id="sb-conn" class="conn conn-err">未连接</span></div>
+<div id="ui-top" class="hidden"><span id="badge-row"></span><span id="turn-info">回合</span></div>
+<div id="equip-panel" class="hidden"><h3>⚔️ 武将总览</h3><div id="equip-list"></div></div>
+<div id="tooltip"></div>
+<div id="msg-box"></div>
+<div id="hand-area" class="hidden"></div>
+<div id="end-turn-btn" class="hidden" onclick="game.endTurn()">⚔️ 结束回合</div>
+<div id="turn-overlay"><h1 id="ov-title"></h1><p id="ov-desc"></p><p style="color:#e74c3c;font-size:14px;margin-bottom:20px">⚠️ 请其他玩家回避</p><button onclick="game.confirmTurnStart()">开始回合</button></div>
+<div id="over-panel"><h1 id="over-title"></h1><p id="over-desc"></p><button onclick="location.reload()">返回主页</button></div>
+<div id="response-overlay">
+    <div class="resp-title" id="resp-title"></div>
+    <div class="resp-desc" id="resp-desc"></div>
+    <div class="resp-cards" id="resp-cards"></div>
+    <button class="resp-btn-skip" id="resp-skip" onclick="resolveResponse(false)">放弃响应</button>
+</div>
+
+<script>
+// ===================================================================
+//  网络层
+// ===================================================================
+const net = {
+    ws: null,
+    roomId: null,
+    playerId: null,
+    myName: '',
+    players: [],
+    isHost: false,
+    connected: false,
+
+    connect() {
+        const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+        this.ws = new WebSocket(`${proto}://${location.host}`);
+        this.ws.onopen = () => { this.connected = true; updateConnStatus(); };
+        this.ws.onclose = () => { this.connected = false; updateConnStatus(); setTimeout(() => net.connect(), 3000); };
+        this.ws.onerror = () => { this.connected = false; updateConnStatus(); };
+        this.ws.onmessage = (e) => {
+            try { net.handleMsg(JSON.parse(e.data)); } catch(err) { console.error('msg error', err); }
+        };
+    },
+
+    send(msg) {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(msg));
+    },
+
+    handleMsg(msg) {
+        switch (msg.type) {
+            case 'welcome':
+                net.playerId = msg.playerId;
+                net.roomId = msg.roomId;
+                net.players = msg.players;
+                net.isHost = (msg.playerId === 1);
+                showWaitScreen();
+                break;
+            case 'player_joined':
+                net.players.push({ name: msg.name, playerId: msg.playerId });
+                renderWaitPlayers();
+                break;
+            case 'player_left':
+                net.players = net.players.filter(p => p.playerId !== msg.playerId);
+                renderWaitPlayers();
+                break;
+            case 'player_ready':
+                document.getElementById('wait-msg').innerText = `${msg.name} 已准备`;
+                break;
+            case 'pick_phase_start':
+                setup.netSetup = msg.setup;
+                setup.pickOrder = msg.pickOrder;
+                setup.currentPicker = msg.currentPicker;
+                setup.takenFactions = new Set();
+                setup.pickedFaction = null;
+                setup.pickedGenerals = [];
+                showPickScreen();
+                break;
+            case 'pick_done':
+                setup.takenFactions = new Set(msg.taken);
+                document.getElementById('pick-wait').innerText = `玩家${msg.playerId}选择了${FNAME[msg.faction]}`;
+                break;
+            case 'pick_next':
+                setup.currentPicker = msg.currentPicker;
+                setup.takenFactions = new Set(msg.taken);
+                setup.pickedFaction = null;
+                setup.pickedGenerals = [];
+                beginNetPickTurn();
+                break;
+            case 'battle_start':
+                startNetBattle(msg.gameState, msg.setup);
+                break;
+            case 'game_action':
+                game.applyRemoteAction(msg.action, msg.playerId);
+                break;
+            case 'state_sync':
+                // 断线重连时恢复状态
+                break;
+            case 'room_list':
+                renderRoomList(msg.rooms);
+                break;
+            case 'error':
+                alert(msg.msg);
+                break;
+        }
+    }
+};
+
+function updateConnStatus() {
+    const el = document.getElementById('sb-conn');
+    if (!el) return;
+    el.className = 'conn ' + (net.connected ? 'conn-ok' : 'conn-err');
+    el.innerText = net.connected ? '已连接' : '断开重连中...';
+}
+
+// ===================================================================
+//  大厅操作
+// ===================================================================
+function netCreateRoom() {
+    const name = document.getElementById('inp-name').value.trim() || '玩家';
+    net.myName = name;
+    net.connect();
+    setTimeout(() => net.send({ type: 'create_room', name }), 500);
+}
+
+function netJoinRoom() {
+    const name = document.getElementById('inp-name').value.trim() || '玩家';
+    const roomId = document.getElementById('inp-room').value.trim().toUpperCase();
+    if (!roomId) { alert('请输入房间号'); return; }
+    net.myName = name;
+    net.connect();
+    setTimeout(() => net.send({ type: 'join_room', roomId, name }), 500);
+}
+
+function netRefreshRooms() {
+    if (!net.ws || net.ws.readyState !== WebSocket.OPEN) net.connect();
+    setTimeout(() => net.send({ type: 'get_rooms' }), 300);
+}
+
+function renderRoomList(rooms) {
+    const el = document.getElementById('room-list');
+    if (!rooms.length) { el.innerHTML = '<div style="color:#666;padding:15px">暂无可用房间</div>'; return; }
+    el.innerHTML = rooms.map(r => `<div class="room-item" onclick="document.getElementById('inp-room').value='${r.id}';netJoinRoom()"><span class="ri-id">${r.id}</span><span class="ri-info">${r.host} · ${r.players}人</span></div>`).join('');
+}
+
+function showWaitScreen() {
+    document.getElementById('lobby-screen').classList.add('hidden');
+    document.getElementById('wait-screen').classList.remove('hidden');
+    document.getElementById('wait-room-id').innerText = `房间号：${net.roomId}`;
+    document.getElementById('wait-config').style.display = net.isHost ? 'block' : 'none';
+    renderWaitPlayers();
+}
+
+function renderWaitPlayers() {
+    const el = document.getElementById('wait-players');
+    el.innerHTML = net.players.map(p => {
+        const cls = (p.playerId === net.playerId ? 'me' : '');
+        return `<span class="player-tag ${cls}">${p.name} (P${p.playerId})</span>`;
+    }).join('');
+}
+
+function netReady() {
+    const config = net.isHost ? {
+        teamCount: parseInt(document.getElementById('cfg-teams').value),
+        aiCount: parseInt(document.getElementById('cfg-ai').value),
+        teams: {}
+    } : {};
+    // 简单起见，联机模式所有人默认单干，可扩展队伍选择
+    net.send({ type: 'ready', config });
+    document.getElementById('btn-ready').disabled = true;
+    document.getElementById('wait-msg').innerText = '等待所有玩家准备...';
+}
+
+// ===================================================================
+//  选将（联网版）
+// ===================================================================
+const PICK_COUNT = 3;
+const FORDER = ['shu','wei','wu','qun','jin','chu','yan','liang','nan','bei'];
+const FNAME = {shu:'蜀汉',wei:'曹魏',wu:'东吴',qun:'群雄',jin:'大晋',chu:'西楚',yan:'燕国',liang:'梁军',nan:'南蛮',bei:'北疆'};
+const FCOLOR = {shu:'#27ae60',wei:'#2980b9',wu:'#e67e22',qun:'#8e44ad',jin:'#c0392b',chu:'#2c3e50',yan:'#1abc9c',liang:'#d35400',nan:'#1e8449',bei:'#5d6d7e'};
+const TEAM_NAME = {A:'甲字队',B:'乙字队',C:'丙字队',D:'丁字队',S:'单干'};
+const TEAM_COLOR = {A:'#e74c3c',B:'#3498db',C:'#2ecc71',D:'#f39c12',S:'#f39c12'};
+
+// 武将池（与服务端一致）
+const GENERAL_POOL={
+shu:[{id:'liubei',name:'刘备',hp:4,maxHp:4,skill:'仁德',sdesc:'回合开始为血量最低己方回1血'},{id:'guanyu',name:'关羽',hp:5,maxHp:5,skill:'武圣',sdesc:'体力高于目标时杀伤害+1'},{id:'zhangfei',name:'张飞',hp:5,maxHp:5,skill:'咆哮',sdesc:'每回合可出2张杀'},{id:'zhaoyun',name:'赵云',hp:4,maxHp:4,skill:'龙胆',sdesc:'移动+1，移动后仍可攻击'},{id:'zhugeliang',name:'诸葛亮',hp:3,maxHp:3,skill:'智谋',sdesc:'摸牌阶段额外摸1张'},{id:'huangzhong',name:'黄忠',hp:4,maxHp:4,skill:'神射',sdesc:'攻击范围+1'},{id:'machao',name:'马超',hp:4,maxHp:4,skill:'骑袭',sdesc:'移动+1，免疫陷阱伤害'},{id:'weiyan',name:'魏延',hp:4,maxHp:4,skill:'狂战',sdesc:'体力≤一半时杀伤害+1且移动+1'},{id:'pangtong',name:'庞统',hp:3,maxHp:3,skill:'连环',sdesc:'火攻溅射目标相邻所有敌人1点'},{id:'jiangwei',name:'姜维',hp:4,maxHp:4,skill:'继志',sdesc:'击杀后可额外移动1步'}],
+wei:[{id:'caocao',name:'曹操',hp:4,maxHp:4,skill:'奸雄',sdesc:'击杀敌方后摸2张牌'},{id:'zhangliao',name:'张辽',hp:4,maxHp:4,skill:'突袭',sdesc:'第一回合移动+2'},{id:'xuchu',name:'许褚',hp:6,maxHp:6,skill:'裸衣',sdesc:'受到杀伤害-1(最少1)，火伤不减'},{id:'simayi',name:'司马懿',hp:3,maxHp:3,skill:'鬼才',sdesc:'受伤时50%转移给相邻己方'},{id:'xiahoudun',name:'夏侯惇',hp:5,maxHp:5,skill:'拔矢',sdesc:'受伤时50%反弹1点给攻击者'},{id:'xuhuang',name:'徐晃',hp:4,maxHp:4,skill:'断斧',sdesc:'杀命中后目标下回合移动-1'},{id:'zhanghe',name:'张郃',hp:4,maxHp:4,skill:'巧变',sdesc:'每回合免疫首次受到的伤害'},{id:'dianwei',name:'典韦',hp:6,maxHp:6,skill:'恶来',sdesc:'体力≤一半时杀伤害+2'},{id:'guojia',name:'郭嘉',hp:2,maxHp:2,skill:'天妒',sdesc:'摸牌阶段额外摸2张'},{id:'xiahoyuan',name:'夏侯渊',hp:4,maxHp:4,skill:'急袭',sdesc:'攻击范围+1，移动后仍可攻击'}],
+wu:[{id:'sunquan',name:'孙权',hp:4,maxHp:4,skill:'制衡',sdesc:'每回合可弃1张手牌额外摸2张'},{id:'zhouyu',name:'周瑜',hp:3,maxHp:3,skill:'火神',sdesc:'火伤+1，火攻可波及相邻敌人'},{id:'ganning',name:'甘宁',hp:4,maxHp:4,skill:'百骑',sdesc:'移动+2，但杀伤害固定为1'},{id:'lumeng',name:'吕蒙',hp:4,maxHp:4,skill:'白衣',sdesc:'免疫陷阱及一切地形效果'},{id:'luxun',name:'陆逊',hp:3,maxHp:3,skill:'连营',sdesc:'火攻命中后可再移动1步'},{id:'taishici',name:'太史慈',hp:4,maxHp:4,skill:'烈射',sdesc:'攻击范围+2，但杀伤害-1(最少1)'},{id:'sunshangxiang',name:'孙尚香',hp:4,maxHp:4,skill:'枭姬',sdesc:'有武器时杀+1，有防具时受伤-1'},{id:'huanggai',name:'黄盖',hp:4,maxHp:4,skill:'苦肉',sdesc:'主动损1血，本次杀伤害+2'},{id:'dingfeng',name:'丁奉',hp:4,maxHp:4,skill:'雪战',sdesc:'出闪后可再摸1张'},{id:'zhugeke',name:'诸葛恪',hp:3,maxHp:3,skill:'傲才',sdesc:'火攻伤害+2，但火攻后自损1血'}],
+qun:[{id:'lvbu',name:'吕布',hp:5,maxHp:5,skill:'无双',sdesc:'杀伤害+1，杀可同时攻击相邻2目标'},{id:'diaochan',name:'貂蝉',hp:3,maxHp:3,skill:'离间',sdesc:'攻击30%令目标跳过下回合'},{id:'dongzhuo',name:'董卓',hp:7,maxHp:7,skill:'暴虐',sdesc:'受伤30%反弹1点，体力上限+1'},{id:'huaxiong',name:'华雄',hp:4,maxHp:4,skill:'骁将',sdesc:'击杀后回复1点体力'},{id:'yanliang',name:'颜良',hp:4,maxHp:4,skill:'猛将',sdesc:'连续攻击同目标第2次伤害+1'},{id:'wenchou',name:'文丑',hp:4,maxHp:4,skill:'突骑',sdesc:'移动+1，移动后首次攻击伤害+1'},{id:'gaoshun',name:'高顺',hp:4,maxHp:4,skill:'陷阵',sdesc:'攻击无视目标防具效果'},{id:'chengong',name:'陈宫',hp:3,maxHp:3,skill:'奇谋',sdesc:'每回合可将1张杀当火攻使用'},{id:'zhangren',name:'张任',hp:4,maxHp:4,skill:'忠勇',sdesc:'己方有武将阵亡的回合杀伤害+2'},{id:'jiling',name:'纪灵',hp:5,maxHp:5,skill:'三尖',sdesc:'杀穿透：命中后对后方1格敌人造成1点'}],
+jin:[{id:'simazhao',name:'司马昭',hp:4,maxHp:4,skill:'野心',sdesc:'击杀后摸1张且可再移动1步'},{id:'duyu',name:'杜预',hp:4,maxHp:4,skill:'武库',sdesc:'装备武器时获得1次免费攻击'},{id:'yanghu',name:'羊祜',hp:4,maxHp:4,skill:'怀柔',sdesc:'回合开始全军回1血，自己本回合不可攻击'},{id:'wangjun',name:'王濬',hp:4,maxHp:4,skill:'楼船',sdesc:'移动+1，免疫陷阱伤害'},{id:'zhanghua',name:'张华',hp:3,maxHp:3,skill:'博物',sdesc:'摸牌+1，可查看目标手牌数量'},{id:'wenyang',name:'文鸯',hp:5,maxHp:5,skill:'勇烈',sdesc:'体力高于目标时伤害+1且移动+1'},{id:'zhouchu',name:'周处',hp:5,maxHp:5,skill:'除害',sdesc:'每回合可出2张杀，第2张伤害+1'},{id:'liuyuan',name:'刘渊',hp:4,maxHp:4,skill:'潜龙',sdesc:'体力≤一半时首次攻击必中(无视闪)'},{id:'wanghun',name:'王浑',hp:4,maxHp:4,skill:'稳进',sdesc:'未移动的回合受伤-1(最少1)'},{id:'tangbin',name:'唐彬',hp:4,maxHp:4,skill:'先锋',sdesc:'己方首个行动的武将杀伤害+1'}],
+chu:[{id:'xiangyu',name:'项羽',hp:6,maxHp:6,skill:'霸王',sdesc:'杀伤害+1，命中后目标退后1格'},{id:'fanzen',name:'范增',hp:3,maxHp:3,skill:'奇策',sdesc:'摸牌+1，可将闪当作杀使用'},{id:'longju',name:'龙且',hp:5,maxHp:5,skill:'骁骑',sdesc:'移动+1，移动后杀伤害+1'},{id:'yingbu',name:'英布',hp:5,maxHp:5,skill:'叛勇',sdesc:'体力≤一半时伤害+2，但受伤+1'},{id:'jibu',name:'季布',hp:4,maxHp:4,skill:'守信',sdesc:'受伤-1(最少1)，击杀不触发击杀效果'},{id:'zhonglimei',name:'钟离昧',hp:4,maxHp:4,skill:'铁壁',sdesc:'体力≤一半时每回合免疫首次杀'},{id:'huanchu',name:'桓楚',hp:4,maxHp:4,skill:'先登',sdesc:'每回合首次攻击伤害+1'},{id:'yuziqi',name:'虞子期',hp:4,maxHp:4,skill:'铸兵',sdesc:'范围+1，有武器时额外伤害+1'},{id:'xiangzhuang',name:'项庄',hp:5,maxHp:5,skill:'舞剑',sdesc:'移动后仍可攻击，杀伤害+1'},{id:'yuji',name:'虞姬',hp:3,maxHp:3,skill:'绝舞',sdesc:'火攻伤害+1，命中后回复自身1血'}],
+yan:[{id:'gongsunzan',name:'公孙瓒',hp:5,maxHp:5,skill:'白马',sdesc:'移动+2，但攻击范围固定为1'},{id:'yanshan',name:'严纲',hp:4,maxHp:4,skill:'冲阵',sdesc:'杀命中后可立即再移动1步'},{id:'tiankai',name:'田楷',hp:4,maxHp:4,skill:'守土',sdesc:'受伤-1(最少1)，移动力固定为1'},{id:'danjing',name:'单经',hp:4,maxHp:4,skill:'游击',sdesc:'移动+1，经过己方武将时回复1血'},{id:'liuyu',name:'刘虞',hp:4,maxHp:4,skill:'仁政',sdesc:'回合开始为最低血队友回1血并减伤'},{id:'gongsunxu',name:'公孙续',hp:4,maxHp:4,skill:'承志',sdesc:'己方武将阵亡时本回合移动+1杀+1'},{id:'gongsunfan',name:'公孙范',hp:4,maxHp:4,skill:'奔袭',sdesc:'每移动2步杀伤害+1(最多+2)'},{id:'yanrou',name:'阎柔',hp:4,maxHp:4,skill:'乌桓',sdesc:'移动+1且攻击范围+1'},{id:'xianyufu',name:'鲜于辅',hp:4,maxHp:4,skill:'忠义',sdesc:'体力≤一半时伤害+1且受伤-1'},{id:'liutai',name:'刘泰',hp:4,maxHp:4,skill:'坚守',sdesc:'连续2回合未移动，第3回合起受伤-2'}],
+liang:[{id:'yuanshu',name:'袁术',hp:4,maxHp:4,skill:'僭越',sdesc:'摸牌+1，可同时装备2件武器'},{id:'jiling2',name:'纪灵·烈',hp:5,maxHp:5,skill:'三尖刀',sdesc:'杀可攻击相邻2目标且范围+1'},{id:'zhangxun',name:'张勋',hp:4,maxHp:4,skill:'守城',sdesc:'受伤-1(最少1)，免疫陷阱伤害'},{id:'qiaorui',name:'桥蕤',hp:4,maxHp:4,skill:'破阵',sdesc:'杀命中有防具目标时破坏其防具'},{id:'leibo',name:'雷薄',hp:4,maxHp:4,skill:'游骑',sdesc:'移动后仍可攻击，经过己方可额外移动'},{id:'chenlan',name:'陈兰',hp:4,maxHp:4,skill:'奔袭梁',sdesc:'移动+1，移动后首次攻击无视闪'},{id:'hansong',name:'韩暹',hp:4,maxHp:4,skill:'白波',sdesc:'移动+1，受到火属性伤害-1'},{id:'yangfeng',name:'杨奉',hp:4,maxHp:4,skill:'护驾',sdesc:'相邻己方受伤时可代替承受(伤害-1)'},{id:'liuxun',name:'刘勋',hp:4,maxHp:4,skill:'固守',sdesc:'未移动受伤-1，连续2回合未移动受伤-2'},{id:'chenji',name:'陈纪',hp:3,maxHp:3,skill:'谋略',sdesc:'摸牌+1，火攻伤害+1'}],
+nan:[{id:'menghuo',name:'孟获',hp:7,maxHp:7,skill:'蛮王',sdesc:'受伤-1(最少1)，体力上限+1'},{id:'zhurong',name:'祝融',hp:4,maxHp:4,skill:'飞刀',sdesc:'范围+1，杀命中30%令目标弃1张牌'},{id:'wutugu',name:'兀突骨',hp:6,maxHp:6,skill:'藤甲兵',sdesc:'免疫普通杀，但火杀伤害+2'},{id:'jinhuansanjie',name:'金环三结',hp:5,maxHp:5,skill:'蛮勇',sdesc:'杀伤害+1，击杀后摸1张牌'},{id:'dongtuna',name:'董荼那',hp:5,maxHp:5,skill:'蛮力',sdesc:'杀伤害+1，移动不受陷阱影响'},{id:'ahuitan',name:'阿会喃',hp:5,maxHp:5,skill:'蛮战',sdesc:'体力≤一半时伤害+1且免疫陷阱'},{id:'duosi',name:'朵思大王',hp:3,maxHp:3,skill:'毒泉',sdesc:'攻击30%令目标下回合摸牌-1'},{id:'mangyachang',name:'忙牙长',hp:5,maxHp:5,skill:'蛮骑',sdesc:'移动+1，经过陷阱时破坏不受伤'},{id:'dailai',name:'带来洞主',hp:4,maxHp:4,skill:'蛮术',sdesc:'摸牌+1，可将桃当作杀使用'},{id:'jinhuan',name:'金环大王',hp:4,maxHp:4,skill:'蛮阵',sdesc:'火攻伤害+1，命中后己方最低血回1血'}],
+bei:[{id:'tuoba',name:'拓跋珪',hp:5,maxHp:5,skill:'铁骑',sdesc:'移动+1，移动后攻击无视目标防具'},{id:'muyong',name:'慕容垂',hp:5,maxHp:5,skill:'燕归',sdesc:'移动后仍可攻击，击杀后可再移动'},{id:'fujian',name:'苻坚',hp:6,maxHp:6,skill:'投鞭',sdesc:'所有攻击伤害+1，体力上限+1'},{id:'wangmeng',name:'王猛',hp:3,maxHp:3,skill:'经纬',sdesc:'摸牌+1，可弃2张牌回复1点体力'},{id:'dengqiang',name:'邓羌',hp:5,maxHp:5,skill:'万人敌',sdesc:'杀伤害+1，命中后目标弃1张手牌'},{id:'zhanggun',name:'张衮',hp:4,maxHp:4,skill:'谋主',sdesc:'火攻伤害+1，命中后目标下回合移动-1'},{id:'yidu',name:'宜都',hp:4,maxHp:4,skill:'守边',sdesc:'受伤-1，相邻己方武将受伤也-1'},{id:'helan',name:'贺兰',hp:4,maxHp:4,skill:'奔雷',sdesc:'移动+2，但杀伤害固定为1'},{id:'kumoxi',name:'库莫奚',hp:4,maxHp:4,skill:'猎骑',sdesc:'移动+1，每移动1步杀伤害+1(最多+2)'},{id:'yuchi',name:'尉迟',hp:5,maxHp:5,skill:'铁盾',sdesc:'体力≤一半时受伤-1，被击杀时攻击者也受1点'}]
+};
+
+const setup = { netSetup: null, pickOrder: [], currentPicker: 0, pickedFaction: null, pickedGenerals: [], takenFactions: new Set() };
+
+function showPickScreen() {
+    document.getElementById('wait-screen').classList.add('hidden');
+    document.getElementById('pick-screen').classList.remove('hidden');
+    beginNetPickTurn();
+}
+
+function beginNetPickTurn() {
+    const isMyTurn = (setup.currentPicker === net.playerId);
+    document.getElementById('pick-wait').style.display = isMyTurn ? 'none' : 'block';
+    document.getElementById('confirm-pick').style.display = 'none';
+    setup.pickedFaction = null;
+    setup.pickedGenerals = [];
+
+    if (isMyTurn) {
+        document.getElementById('pick-title').innerText = `轮到你选将`;
+        document.getElementById('pick-sub').innerText = '选择势力和武将';
+        renderNetFactionRow();
+        document.getElementById('general-grid').innerHTML = '';
+        document.getElementById('pick-status').innerText = '';
+    } else {
+        document.getElementById('pick-title').innerText = `玩家 ${setup.currentPicker} 选将中`;
+        document.getElementById('pick-sub').innerText = '请等待...';
+        document.getElementById('faction-row').innerHTML = '';
+        document.getElementById('general-grid').innerHTML = '';
+        document.getElementById('pick-status').innerText = '';
+    }
+}
+
+function renderNetFactionRow() {
+    const row = document.getElementById('faction-row');
+    row.innerHTML = '';
+    FORDER.forEach(f => {
+        const div = document.createElement('div');
+        const taken = setup.takenFactions.has(f);
+        div.className = `faction-pick ${taken ? 'taken' : ''} ${setup.pickedFaction === f ? 'chosen' : ''}`;
+        div.style.background = FCOLOR[f] + '44';
+        div.innerHTML = `${FNAME[f]}<div style="font-size:11px;color:#ccc">${taken ? '已选' : '可选'}</div>`;
+        div.onclick = () => { if (taken) return; setup.pickedFaction = f; renderNetFactionRow(); renderNetGeneralGrid(); };
+        row.appendChild(div);
+    });
+}
+
+function renderNetGeneralGrid() {
+    const grid = document.getElementById('general-grid');
+    grid.innerHTML = '';
+    document.getElementById('pick-sub').innerText = `从${FNAME[setup.pickedFaction]}选${PICK_COUNT}名武将`;
+    GENERAL_POOL[setup.pickedFaction].forEach(g => {
+        const div = document.createElement('div');
+        const picked = setup.pickedGenerals.includes(g.id);
+        div.className = `general-card ${picked ? 'picked' : ''}`;
+        div.innerHTML = `<div class="gname">${g.name}</div><div class="ghp">❤️${g.hp}/${g.maxHp}</div><div class="gskill">【${g.skill}】</div><div class="gdesc">${g.sdesc}</div>`;
+        div.onclick = () => {
+            if (picked) setup.pickedGenerals = setup.pickedGenerals.filter(x => x !== g.id);
+            else if (setup.pickedGenerals.length < PICK_COUNT) setup.pickedGenerals.push(g.id);
+            else { document.getElementById('pick-status').innerText = `最多${PICK_COUNT}名！`; return; }
+            renderNetGeneralGrid();
+            updateNetPickStatus();
+        };
+        grid.appendChild(div);
+    });
+    updateNetPickStatus();
+}
+
+function updateNetPickStatus() {
+    const n = setup.pickedGenerals.length;
+    document.getElementById('pick-status').innerText = `已选 ${n}/${PICK_COUNT}`;
+    document.getElementById('confirm-pick').style.display = (n === PICK_COUNT) ? 'block' : 'none';
+}
+
+function netConfirmPick() {
+    net.send({ type: 'pick', faction: setup.pickedFaction, generals: [...setup.pickedGenerals] });
+    document.getElementById('confirm-pick').style.display = 'none';
+    document.getElementById('pick-wait').style.display = 'block';
+    document.getElementById('pick-wait').innerText = '已提交，等待其他玩家...';
+}
+
+// ===================================================================
+//  卡牌 & 地图常量（与原游戏完全一致）
+// ===================================================================
+const CARDS=[
+{name:'杀',elem:'jin',type:'attack',dmg:1,desc:'造成1点伤害（每回合限1张）',w:3},
+{name:'杀',elem:'jin',type:'attack',dmg:1,desc:'造成1点伤害（每回合限1张）',w:3},
+{name:'杀',elem:'jin',type:'attack',dmg:1,desc:'造成1点伤害（每回合限1张）',w:3},
+{name:'火杀',elem:'huo',type:'attack',dmg:1,fire:true,desc:'火伤1点（每回合限1张）',w:2},
+{name:'火攻',elem:'huo',type:'fire_attack',dmg:1,fire:true,desc:'火伤1点，不限次数',w:2},
+{name:'闪',elem:'mu',type:'defend',desc:'抵消一次杀/火杀',w:3},
+{name:'闪',elem:'mu',type:'defend',desc:'抵消一次杀/火杀',w:2},
+{name:'桃',elem:'shui',type:'heal',amount:1,desc:'恢复1点体力',w:2},
+{name:'桃',elem:'shui',type:'heal',amount:1,desc:'恢复1点体力',w:2},
+{name:'落石',elem:'tu',type:'terrain',trap:'伏兵',desc:'布置陷阱，踏入者受2点伤害',w:1},
+{name:'青龙刀',elem:'equip',type:'weapon',range:2,desc:'攻击范围变为2格',w:1},
+{name:'丈八矛',elem:'equip',type:'weapon',bonusDmg:1,desc:'攻击伤害+1',w:1},
+{name:'方天戟',elem:'equip',type:'weapon',range:2,bonusDmg:1,desc:'范围2格且伤害+1',w:1},
+{name:'八卦阵',elem:'equip',type:'armor',blockRate:.5,desc:'50%概率免疫一次杀',w:1},
+{name:'藤甲',elem:'equip',type:'armor',fireWeak:true,desc:'免疫普通杀，火杀+1',w:1},
+{name:'仁王盾',elem:'equip',type:'armor',blockJin:true,desc:'免疫金属性普通杀',w:1},
+];
+const WEIGHTED_POOL=[];CARDS.forEach(c=>{for(let i=0;i<(c.w||1);i++)WEIGHTED_POOL.push(c)});
+
+let MAP=8,HEX=40;
+function calcMapSize(n){if(n<=3){MAP=10;HEX=38}else if(n<=5){MAP=12;HEX=35}else if(n<=7){MAP=14;HEX=32}else if(n<=10){MAP=16;HEX=30}else if(n<=15){MAP=18;HEX=28}else{MAP=20;HEX=26}}
+function generateStartPositions(factions){const pos={},n=factions.length,cx=MAP/2-.5,cy=MAP/2-.5,radius=Math.max(2,Math.floor(MAP/2)-1);factions.forEach((f,i)=>{const angle=(2*Math.PI*i/n)-Math.PI/2;const bx=Math.round(cx+radius*Math.cos(angle)),by=Math.round(cy+radius*Math.sin(angle));const spots=[[bx,by]];const nb=hexNeighbors(bx,by);for(const n2 of nb){if(spots.length>=3)break;if(n2.x>=0&&n2.x<MAP&&n2.y>=0&&n2.y<MAP&&!spots.some(s=>s[0]===n2.x&&s[1]===n2.y))spots.push([n2.x,n2.y])}while(spots.length<3)spots.push([Math.min(MAP-1,bx),Math.min(MAP-1,by)]);pos[f]=spots.slice(0,3)});return pos;}
+function cube(x,y){const q=x-(y-(y&1))/2;return{q,r:y,s:-q-y}}
+function hexDist(x1,y1,x2,y2){const a=cube(x1,y1),b=cube(x2,y2);return Math.max(Math.abs(a.q-b.q),Math.abs(a.r-b.r),Math.abs(a.s-b.s))}
+function hexNeighbors(x,y){const even=[[1,0],[0,-1],[-1,-1],[-1,0],[-1,1],[0,1]],odd=[[1,0],[1,-1],[0,-1],[-1,0],[0,1],[1,1]];const dirs=(y&1)?odd:even,res=[];for(const[dx,dy]of dirs){const nx=x+dx,ny=y+dy;if(nx>=0&&nx<MAP&&ny>=0&&ny<MAP)res.push({x:nx,y:ny})}return res}
+
+// ===================================================================
+//  游戏引擎（联网版：所有操作通过 net.send 发送，收到 game_action 后本地执行）
+// ===================================================================
+const game = {
+    controllers:{},units:[],terrain:{},hands:{},turnIdx:0,selCard:null,selUnit:null,lastElem:null,over:false,cid:1,waitingConfirm:false,activeFactions:[],turnCount:0,factionTeamMap:{},
+    get curFaction(){return this.activeFactions[this.turnIdx]},
+    isHuman(f){return this.controllers[f]>0},
+    isMe(f){return this.controllers[f]===net.playerId},
+    alive(f){return this.units.filter(u=>u.team===f&&u.hp>0)},
+    allAlive(){return this.units.filter(u=>u.hp>0)},
+    unitAt(x,y){return this.units.find(u=>u.x===x&&u.y===y&&u.hp>0)},
+    atkRange(u){if(u.skill==='白马')return 1;let r=(u.weapon&&u.weapon.range)?u.weapon.range:1;if(['神射','烈射','飞刀','铸兵','三尖刀','乌桓','急袭'].includes(u.skill))r++;return r},
+    moveSteps(u){let s=1;if(u.skill==='守土')return 1;if(['龙胆','骑袭','突骑','骁骑','游击','乌桓','蛮骑','铁骑','楼船','舞剑','燕归'].includes(u.skill))s++;if(['百骑','白马','奔雷'].includes(u.skill))s+=2;if(u.skill==='狂战'&&u.hp<=u.maxHp/2)s++;if(u.skill==='勇烈'&&u.hp>0)s++;if(u._allyDied&&u.skill==='承志')s++;return s},
+    canKillAgain(u){return['咆哮','除害'].includes(u.skill)},
+    curHand(){return this.hands[this.curFaction]||[]},
+    teamOf(f){return this.factionTeamMap[f]||'S'},
+    sameTeam(f1,f2){const t1=this.teamOf(f1),t2=this.teamOf(f2);if(t1==='S'||t2==='S')return false;return t1===t2},
+    drawCards(f,n){if(!this.hands[f])this.hands[f]=[];for(let i=0;i<n;i++){const t=WEIGHTED_POOL[Math.floor(Math.random()*WEIGHTED_POOL.length)];this.hands[f].push({...t,id:this.cid++})}if(f===this.curFaction&&this.isMe(f))renderHand()},
+
+    // ★ 联网核心：本地操作 → 发送到服务器
+    endTurn(){
+        if(this.over||!this.isMe(this.curFaction)||this.waitingConfirm||pendingResponse)return;
+        this.selUnit=null;this.selCard=null;renderHand();render();
+        net.send({type:'action',action:{type:'end_turn'}});
+    },
+
+    // ★ 收到远程指令后在本地执行（所有客户端同步演算）
+    applyRemoteAction(action, playerId) {
+        switch(action.type) {
+            case 'end_turn': this.nextTurn(); break;
+            case 'move': {
+                const u=this.unitAt(action.fromX,action.fromY);
+                if(u){u.x=action.toX;u.y=action.toY;u.moved=true;u._movedSteps=hexDist(action.fromX,action.fromY,action.toX,action.toY);render();if(!['骑袭','白衣','楼船','守城','蛮战','蛮力','蛮骑'].includes(u.skill))checkTrap(u);}
+                break;
+            }
+            case 'use_card': {
+                const u=this.unitAt(action.unitX,action.unitY);
+                const card=this.curHand().find(c=>c.id===action.cardId);
+                const target=action.targetX!=null?this.unitAt(action.targetX,action.targetY):null;
+                if(u&&card)localUseCard(card,u,{x:action.targetX,y:action.targetY},target);
+                break;
+            }
+            case 'response_shan': {
+                // 闪的响应由被攻击方客户端处理
+                break;
+            }
+        }
+    },
+
+    nextTurn(){let next=(this.turnIdx+1)%this.activeFactions.length,s=0;while(this.alive(this.activeFactions[next]).length===0&&s<this.activeFactions.length){next=(next+1)%this.activeFactions.length;s++}this.turnIdx=next;this.startTurn()},
+    startTurn(){
+        const f=this.curFaction;this.turnCount++;
+        this.alive(f).forEach(u=>{u.moved=false;u.attacked=false;u.killCount=0;u._firstAttackDone=false;u._allyDied=false;u._movedSteps=0;u._noAttack=false;u._firstHitBlocked=false});
+        const healer=this.alive(f).find(u=>u.skill==='仁德');if(healer){const allies=this.alive(f).filter(u=>u!==healer&&u.hp<u.maxHp);if(allies.length){allies.sort((a,b)=>a.hp-b.hp);allies[0].hp=Math.min(allies[0].maxHp,allies[0].hp+1);showMsg(`💚 刘备【仁德】回复${allies[0].name}`)}}
+        const hr=this.alive(f).find(u=>u.skill==='怀柔');if(hr){this.alive(f).forEach(u=>{if(u.hp<u.maxHp)u.hp++});hr._noAttack=true;showMsg(`💚 羊祜【怀柔】全军回复`)}
+        updateTop();
+        if(this.isHuman(f)){
+            this.waitingConfirm=true;
+            document.getElementById('hand-area').classList.add('hidden');
+            this.selUnit=null;this.selCard=null;render();
+            const pId=this.controllers[f];
+            const isMine=(pId===net.playerId);
+            document.getElementById('ov-title').innerText=isMine?`你的回合`:`玩家 ${pId} 的回合`;
+            document.getElementById('ov-title').style.color=FCOLOR[f];
+            document.getElementById('ov-desc').innerText=`操控：${FNAME[f]}（${TEAM_NAME[this.teamOf(f)]}）`;
+            document.getElementById('turn-overlay').style.display='flex';
+        } else {
+            showMsg(`⏳ ${FNAME[f]}（AI）行动中...`);
+            setTimeout(()=>aiTurn(f),800);
+        }
+    },
+    confirmTurnStart(){document.getElementById('turn-overlay').style.display='none';this.waitingConfirm=false;this.beginHumanTurn()},
+    beginHumanTurn(){const f=this.curFaction;let n=2;if(this.alive(f).some(u=>['智谋','天妒','博物','僭越','谋略','蛮术','经纬','奇策'].includes(u.skill)))n++;if(this.alive(f).some(u=>u.skill==='天妒'))n++;this.drawCards(f,n);if(this.isMe(f)){document.getElementById('hand-area').classList.remove('hidden')}showMsg(`🎴 ${FNAME[f]} 回合，摸${n}张`);render();renderHand()}
+};
+
+// ===================================================================
+//  联网战斗初始化
+// ===================================================================
+function startNetBattle(gs, cfg) {
+    document.getElementById('pick-screen').classList.add('hidden');
+    document.getElementById('status-bar').classList.remove('hidden');
+    document.getElementById('ui-top').classList.remove('hidden');
+    document.getElementById('equip-panel').classList.remove('hidden');
+    document.getElementById('end-turn-btn').classList.remove('hidden');
+
+    game.activeFactions = gs.activeFactions;
+    game.controllers = gs.controllers;
+    game.factionTeamMap = gs.factionTeamMap;
+    game.hands = {};
+    game.terrain = {};
+    game.units = [];
+    game.turnIdx = 0;
+    game.turnCount = 0;
+    game.over = false;
+    game.cid = 1;
+
+    calcMapSize(game.activeFactions.length);
+    const startPositions = generateStartPositions(game.activeFactions);
+    const eqPool = CARDS.filter(c => c.elem === 'equip');
+
+    game.activeFactions.forEach(f => {
+        let genIds;
+        const owner = game.controllers[f];
+        if (owner > 0) {
+            genIds = gs.generalsMap[f];
+        } else {
+            const pool = [...GENERAL_POOL[f]];
+            genIds = pool.sort(() => Math.random() - 0.5).slice(0, PICK_COUNT).map(g => g.id);
+        }
+        genIds.forEach((gid, i) => {
+            const base = GENERAL_POOL[f].find(g => g.id === gid);
+            const sp = startPositions[f][i] || startPositions[f][0];
+            const u = { ...base, team: f, x: sp[0], y: sp[1], weapon: null, armor: null, moved: false, attacked: false, skipped: false, killCount: 0, _firstAttackDone: false, _allyDied: false, _stayCount: 0, _movedSteps: 0, _noAttack: false, _firstHitBlocked: false };
+            if (Math.random() < 0.35) {
+                const eq = { ...eqPool[Math.floor(Math.random() * eqPool.length)] };
+                if (eq.type === 'weapon') u.weapon = eq; else u.armor = eq;
+            }
+            game.units.push(u);
+        });
+    });
+
+    buildBadges(); resize();
+    game.activeFactions.forEach(f => { if (game.isHuman(f)) game.drawCards(f, 4); });
+    renderEquipPanel();
+    game.startTurn();
+}
+
+// ===================================================================
+//  本地卡牌使用（发送指令到服务器）
+// ===================================================================
+function localUseCard(card, unit, hex, target) {
+    // 实际效果在收到 game_action 后由所有客户端统一执行
+    // 这里只做本地即时反馈 + 发送
+    const dist = hexDist(unit.x, unit.y, hex.x, hex.y);
+
+    if (card.type === 'weapon' || card.type === 'armor') {
+        if (hex.x !== unit.x || hex.y !== unit.y) { showMsg('装备只能对自己用'); return; }
+        if (card.type === 'weapon') { if (unit.skill === '僭越' && unit.weapon) unit.weapon2 = card; else unit.weapon = card; }
+        else unit.armor = card;
+        showMsg(`⚙️ ${unit.name}装备【${card.name}】`);
+        consume(card); renderEquipPanel();
+        net.send({ type: 'action', action: { type: 'use_card', cardId: card.id, unitX: unit.x, unitY: unit.y, targetX: hex.x, targetY: hex.y } });
+        return;
+    }
+    if (card.type === 'heal') {
+        if (hex.x !== unit.x || hex.y !== unit.y) { showMsg('桃只能对自己用'); return; }
+        if (unit.hp >= unit.maxHp) { showMsg('体力已满'); return; }
+        unit.hp = Math.min(unit.maxHp, unit.hp + card.amount);
+        showMsg(`🌿 ${unit.name}回1血`);
+        consume(card); render(); renderEquipPanel();
+        net.send({ type: 'action', action: { type: 'use_card', cardId: card.id, unitX: unit.x, unitY: unit.y, targetX: hex.x, targetY: hex.y } });
+        return;
+    }
+    if (card.type === 'terrain') {
+        if (game.unitAt(hex.x, hex.y)) { showMsg('该格有单位'); return; }
+        game.terrain[`${hex.x},${hex.y}`] = card.trap;
+        showMsg(`🪨 布置【${card.trap}】`);
+        consume(card); render();
+        net.send({ type: 'action', action: { type: 'use_card', cardId: card.id, unitX: unit.x, unitY: unit.y, targetX: hex.x, targetY: hex.y } });
+        return;
+    }
+    if (card.type === 'attack' || card.type === 'fire_attack') {
+        if (!target || target.team === unit.team) { showMsg('请选择敌方目标'); return; }
+        if (game.sameTeam(unit.team, target.team)) { showMsg('不可攻击队友！'); return; }
+        const range = game.atkRange(unit);
+        if (dist > range) { showMsg(`距离${dist}超出范围${range}`); return; }
+        // 简化：联网版攻击直接结算（闪的响应后续可扩展为二次消息）
+        let dmg = card.type === 'attack' ? calcAttackDmg(unit, target, card) : calcFireDmg(unit, target, card);
+        let blocked = card.type === 'attack' ? applyDefenseCheck(unit, target, card) : false;
+        if (!blocked && card.type === 'fire_attack') dmg = applyDefenseReduction(target, dmg);
+        if (!blocked) dealDmg(target, dmg, unit, card);
+        unit.attacked = true; unit.killCount++; unit._firstAttackDone = true;
+        game.lastElem = card.elem;
+        consume(card); render(); renderEquipPanel();
+        net.send({ type: 'action', action: { type: 'use_card', cardId: card.id, unitX: unit.x, unitY: unit.y, targetX: hex.x, targetY: hex.y } });
+        return;
+    }
+}
+
+// ===================================================================
+//  Canvas 渲染 & 交互（与原游戏一致，点击改为发送网络指令）
+// ===================================================================
+const cvs = document.createElement('canvas'), ctx = cvs.getContext('2d');
+function resize(){cvs.width=innerWidth;cvs.height=innerHeight;render()}
+addEventListener('resize',resize);
+function hexPx(x,y){const w=HEX*Math.sqrt(3),h=HEX*2;const ox=(cvs.width-220-MAP*w)/2+w/2,oy=(cvs.height-MAP*h*.75)/2+h/2+10;return{px:ox+x*w+(y%2)*(w/2),py:oy+y*(h*.75)}}
+function pxToHex(mx,my){let best=null,bd=Infinity;for(let y=0;y<MAP;y++)for(let x=0;x<MAP;x++){const{px,py}=hexPx(x,y);const d=Math.hypot(mx-px,my-py);if(d<HEX*.95&&d<bd){bd=d;best={x,y}}}return best}
+
+function render(){
+ctx.clearRect(0,0,cvs.width,cvs.height);ctx.fillStyle='#1a1a2e';ctx.fillRect(0,0,cvs.width,cvs.height);
+if(game.units.length===0)return;
+const su=game.selUnit,sc=game.curHand().find(c=>c.id===game.selCard);
+for(let y=0;y<MAP;y++)for(let x=0;x<MAP;x++){const{px,py}=hexPx(x,y);const key=`${x},${y}`;let fill='#2a2a4a',stroke='#4a4a6a',lw=1.5;if(game.terrain[key]){fill='#4a1a1a';stroke='#c0392b';lw=2}if(su&&su.hp>0&&su.team===game.curFaction&&game.isMe(su.team)){const d=hexDist(su.x,su.y,x,y);if(!su.moved&&d<=game.moveSteps(su)&&!game.unitAt(x,y)){fill='#1a4a3a';stroke='#2ecc71'}if(sc&&(sc.type==='attack'||sc.type==='fire_attack')){const t=game.unitAt(x,y);if(t&&t.team!==su.team&&!game.sameTeam(su.team,t.team)&&d<=game.atkRange(su)){fill='#4a1a2a';stroke='#e74c3c'}}if(sc&&(sc.type==='weapon'||sc.type==='armor'||sc.type==='heal')&&x===su.x&&y===su.y){fill='#1a3a4a';stroke='#3498db'}if(sc&&sc.type==='terrain'&&!game.unitAt(x,y)){fill='#3a3a1a';stroke='#f39c12'}}ctx.beginPath();for(let i=0;i<6;i++){const a=Math.PI/3*i-Math.PI/6;const hx=px+HEX*Math.cos(a),hy=py+HEX*Math.sin(a);i===0?ctx.moveTo(hx,hy):ctx.lineTo(hx,hy)}ctx.closePath();ctx.fillStyle=fill;ctx.fill();ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke()}
+game.units.forEach(u=>{if(u.hp<=0)return;const{px,py}=hexPx(u.x,u.y),r=HEX*.55;ctx.beginPath();ctx.arc(px,py,r,0,Math.PI*2);ctx.fillStyle=(game.selUnit===u)?'#f1c40f':FCOLOR[u.team];ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();ctx.fillStyle='#fff';ctx.font=`bold ${HEX*.35}px STKaiti`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(u.name[0],px,py);const bw=HEX*1.1,bx=px-bw/2,by=py+r+3;ctx.fillStyle='#111';ctx.fillRect(bx,by,bw,4);ctx.fillStyle=u.hp/u.maxHp>.3?'#2ecc71':'#e74c3c';ctx.fillRect(bx,by,bw*(u.hp/u.maxHp),4);ctx.font='10px serif';if(u.weapon)ctx.fillText('⚔',px-r*.7,py-r*.7);if(u.armor)ctx.fillText('🛡',px+r*.7,py-r*.7);if(game.isHuman(u.team)){ctx.font='bold 10px STKaiti';ctx.fillStyle='#ffd700';ctx.fillText('P'+game.controllers[u.team],px,py-r-7)}const t=game.teamOf(u.team);if(t!=='S'){ctx.beginPath();ctx.arc(px,py,r+3,0,Math.PI*2);ctx.strokeStyle=TEAM_COLOR[t];ctx.lineWidth=2;ctx.stroke()}});
+}
+
+cvs.addEventListener('click',e=>{
+if(game.over||!game.isMe(game.curFaction)||game.waitingConfirm||pendingResponse)return;
+const rect=cvs.getBoundingClientRect();const hex=pxToHex(e.clientX-rect.left,e.clientY-rect.top);if(!hex)return;
+const clicked=game.unitAt(hex.x,hex.y);const card=game.curHand().find(c=>c.id===game.selCard);
+if(!card&&clicked&&clicked.team===game.curFaction){game.selUnit=clicked;game.selCard=null;render();renderHand();return}
+if(!game.selUnit){showMsg('请先选择己方武将');return}
+const su=game.selUnit;if(su.hp<=0)return;
+if(!card&&!clicked){
+    if(su.moved){showMsg('已移动');return}
+    if(hexDist(su.x,su.y,hex.x,hex.y)>game.moveSteps(su)){showMsg('超出移动范围');return}
+    const oldX=su.x,oldY=su.y;
+    // ★ 联网：发送移动指令
+    net.send({type:'action',action:{type:'move',fromX:oldX,fromY:oldY,toX:hex.x,toY:hex.y}});
+    su.x=hex.x;su.y=hex.y;su.moved=true;su._movedSteps=hexDist(oldX,oldY,hex.x,hex.y);render();
+    if(!['骑袭','白衣','楼船','守城','蛮战','蛮力','蛮骑'].includes(su.skill))checkTrap(su);
+    return;
+}
+if(card)localUseCard(card,su,hex,clicked);
+});
+
+const tooltip=document.getElementById('tooltip');
+cvs.addEventListener('mousemove',e=>{const rect=cvs.getBoundingClientRect();const hex=pxToHex(e.clientX-rect.left,e.clientY-rect.top);const u=hex?game.unitAt(hex.x,hex.y):null;if(u){tooltip.style.display='block';tooltip.innerHTML=unitInfoHTML(u);let tx=e.clientX+15,ty=e.clientY+15;if(tx+260>innerWidth)tx=e.clientX-270;if(ty+180>innerHeight)ty=e.clientY-180;tooltip.style.left=tx+'px';tooltip.style.top=ty+'px'}else tooltip.style.display='none'});
+cvs.addEventListener('mouseleave',()=>tooltip.style.display='none');
+function unitInfoHTML(u){const who=game.isHuman(u.team)?`玩家${game.controllers[u.team]}`:'AI';const t=game.teamOf(u.team);let h=`<b style="color:${FCOLOR[u.team]};font-size:15px">${u.name}</b> ${FNAME[u.team]}（${who}）<br>队伍：<span style="color:${TEAM_COLOR[t]}">${TEAM_NAME[t]}</span><br>❤️${u.hp}/${u.maxHp}<br><span style="color:#7bed9f">【${u.skill}】</span>${u.sdesc}<br>`;h+=u.weapon?`⚔️${u.weapon.name}<br>`:'⚔️无<br>';h+=u.armor?`🛡️${u.armor.name}`:'🛡️无';return h}
+
+function consumeFromHand(faction,card){game.hands[faction]=(game.hands[faction]||[]).filter(c=>c.id!==card.id);if(faction===game.curFaction&&game.isMe(faction))renderHand()}
+function consume(card){game.hands[game.curFaction]=game.curHand().filter(c=>c.id!==card.id);game.selCard=null;renderHand();render()}
+
+// ===================================================================
+//  伤害/技能/AI（与原游戏完全一致，此处保留完整实现）
+// ===================================================================
+let pendingResponse=null;
+
+function calcAttackDmg(unit,target,card){let dmg=card.dmg;if(unit.skill==='百骑'||unit.skill==='奔雷')return 1;if(unit.weapon&&unit.weapon.bonusDmg)dmg++;if(unit.weapon2&&unit.weapon2.bonusDmg)dmg++;if(game.lastElem==='jin'&&card.fire)dmg++;const s=unit.skill;if(s==='武圣'&&unit.hp>target.hp)dmg++;if(s==='恶来'&&unit.hp<=unit.maxHp/2)dmg+=2;if(s==='狂战'&&unit.hp<=unit.maxHp/2)dmg++;if(s==='苦肉'){unit.hp--;dmg+=2;showMsg(`💔 黄盖【苦肉】自损1血`);render();if(unit.hp<=0){handleDying(unit);return 0}}if(['无双','霸王','投鞭','万人敌'].includes(s))dmg++;if(['继志','断斧','猛将','忠勇','冲阵','先登','骁骑','舞剑','破阵','蛮勇','蛮力','三尖','三尖刀','承志'].includes(s))dmg++;if(s==='勇烈'&&unit.hp>target.hp)dmg++;if(s==='除害'&&unit.killCount===1)dmg++;if(s==='突骑'&&!unit._firstAttackDone)dmg++;if(s==='奔袭'&&unit._movedSteps>0)dmg+=Math.min(2,Math.floor(unit._movedSteps/2));if(s==='猎骑')dmg+=Math.min(2,unit._movedSteps);if(s==='忠义'&&unit.hp<=unit.maxHp/2)dmg++;if(s==='叛勇'&&unit.hp<=unit.maxHp/2)dmg+=2;if(s==='枭姬'&&unit.weapon)dmg++;if(s==='铸兵'&&unit.weapon)dmg++;if(s==='乌桓')dmg++;return dmg}
+function calcFireDmg(unit,target,card){let dmg=card.dmg;if(unit.weapon&&unit.weapon.bonusDmg)dmg++;if(game.lastElem==='jin')dmg++;const s=unit.skill;if(s==='火神')dmg++;if(s==='傲才')dmg+=2;if(s==='绝舞')dmg++;if(s==='蛮阵')dmg++;if(s==='谋主')dmg++;if(s==='谋略')dmg++;if(s==='连环')dmg++;return dmg}
+function applyDefenseCheck(unit,target,card){let blocked=false;const ignoreArmor=(unit.skill==='陷阵'||unit.skill==='铁骑');if(target.armor&&!ignoreArmor){if(target.armor.blockJin&&card.elem==='jin'&&!card.fire){blocked=true;showMsg('🛡️仁王盾挡住！')}if(target.armor.blockRate&&!blocked&&Math.random()<target.armor.blockRate){blocked=true;showMsg('🛡️八卦阵生效！')}}if(target.skill==='藤甲兵'&&!card.fire&&!blocked){blocked=true;showMsg('🛡️兀突骨【藤甲兵】免疫！')}if(target.skill==='巧变'&&!target._firstHitBlocked){target._firstHitBlocked=true;blocked=true;showMsg('🛡️张郃【巧变】免疫！')}if(target.skill==='铁壁'&&target.hp<=target.maxHp/2&&!target._firstHitBlocked){target._firstHitBlocked=true;blocked=true;showMsg('🛡️钟离昧【铁壁】免疫！')}return blocked}
+function applyDefenseReduction(target,dmg){const s=target.skill;if(['裸衣','蛮王','守信','坚守','守土','守城','护驾','铁壁','铁盾','稳进','守边','固守'].includes(s))dmg=Math.max(1,dmg-1);if(s==='坚守'&&(target._stayCount||0)>=2)dmg=Math.max(1,dmg-2);if(s==='固守'&&(target._stayCount||0)>=2)dmg=Math.max(1,dmg-2);if(s==='枭姬'&&target.armor)dmg=Math.max(1,dmg-1);if(s==='忠义'&&target.hp<=target.maxHp/2)dmg=Math.max(1,dmg-1);if(s==='叛勇')dmg+=1;if(s==='白波')dmg=Math.max(1,dmg-1);if(s==='稳进'&&!target.moved)dmg=Math.max(1,dmg-1);return dmg}
+
+function dealDmg(target,amount,attacker,card){
+if(target.skill==='守边'){hexNeighbors(target.x,target.y).forEach(n=>{const ally=game.unitAt(n.x,n.y);if(ally&&ally.team===target.team&&ally.hp>0)amount=Math.max(1,amount-1)})}
+if(amount<=0){render();return}
+target.hp-=amount;showMsg(`💥 ${target.name}受${amount}点伤害！`);render();renderEquipPanel();updateTop();
+if(attacker&&target.skill==='拔矢'&&target.hp>0&&Math.random()<.5){attacker.hp--;render();showMsg(`⚡夏侯惇【拔矢】反弹！`);if(attacker.hp<=0)handleDying(attacker)}
+if(attacker&&target.skill==='暴虐'&&target.hp>0&&Math.random()<.3){attacker.hp--;render();showMsg(`⚡董卓【暴虐】反弹！`);if(attacker.hp<=0)handleDying(attacker)}
+if(target.hp<=0)handleDying(target,attacker);
+}
+
+function handleDying(target,attacker){
+game.alive(target.team).forEach(a=>{if(a.skill==='承志'){a._allyDied=true;a._movedSteps=0}});
+const peachCards=(game.hands[target.team]||[]).filter(c=>c.name==='桃');
+const needed=1-target.hp;
+if(peachCards.length>=needed&&needed>0){
+    if(game.isMe(target.team)){showPeachPrompt(target,peachCards,needed);return}
+    else{for(let i=0;i<needed;i++)consumeFromHand(target.team,peachCards[i]);target.hp=1;showMsg(`🍑 ${target.name}用${needed}个桃脱离濒死！`);render();renderEquipPanel();updateTop();return}
+}
+setTimeout(()=>showMsg(`☠️ ${target.name}阵亡！`),400);
+if(attacker){
+if(attacker.skill==='奸雄'){game.drawCards(attacker.team,2);showMsg(`🎴曹操【奸雄】摸2张`)}
+if(attacker.skill==='骁将'){attacker.hp=Math.min(attacker.maxHp,attacker.hp+1);showMsg(`💚华雄【骁将】回1血`)}
+if(attacker.skill==='野心'){game.drawCards(attacker.team,1);attacker.moved=false;showMsg(`🎴司马昭【野心】`)}
+if(attacker.skill==='蛮勇'){game.drawCards(attacker.team,1);showMsg(`🎴金环三结【蛮勇】`)}
+if(attacker.skill==='燕归'){attacker.moved=false;showMsg(`🏇慕容垂【燕归】`)}
+if(attacker.skill==='继志'){attacker.moved=false;showMsg(`🏇姜维【继志】`)}
+}
+checkWin();
+}
+
+function showPeachPrompt(target,peachCards,needed){
+pendingResponse={type:'peach',target,cards:peachCards,needed};
+document.getElementById('resp-title').innerText='💀 濒死求救！';
+document.getElementById('resp-desc').innerHTML=`<b style="color:${FCOLOR[target.team]}">${target.name}</b> 即将阵亡！<br>当前体力：<b style="color:#e74c3c">${target.hp}</b><br>需要 <b style="color:#ffd700">${needed}</b> 个桃（持有 ${peachCards.length} 个）`;
+renderResponseCards(peachCards);
+document.getElementById('resp-skip').innerText='放弃救援';
+document.getElementById('response-overlay').style.display='flex';
+}
+function renderResponseCards(cards){const c=document.getElementById('resp-cards');c.innerHTML='';cards.forEach(card=>{const div=document.createElement('div');div.className=`card elem-${card.elem}`;div.style.cursor='pointer';div.innerHTML=`<div class="card-top">${card.name}</div><div class="card-desc">${card.desc}</div>`;div.onclick=()=>resolveResponse(true,card);c.appendChild(div)})}
+function resolveResponse(use,chosen){
+if(!pendingResponse)return;const resp=pendingResponse;document.getElementById('response-overlay').style.display='none';pendingResponse=null;
+if(resp.type==='peach'){if(use&&chosen){for(let i=0;i<resp.needed;i++)consumeFromHand(resp.target.team,resp.cards[i]);resp.target.hp=1;showMsg(`🍑 ${resp.target.name}用${resp.needed}个桃脱离濒死！`);render();renderEquipPanel();updateTop()}else{showMsg(`☠️ ${resp.target.name}阵亡！`);checkWin()}}
+}
+
+function checkTrap(unit){const key=`${unit.x},${unit.y}`;if(game.terrain[key]){const name=game.terrain[key];delete game.terrain[key];render();setTimeout(()=>{showMsg(`💥${unit.name}触发【${name}】！`);dealDmg(unit,2,null,null)},250)}}
+function checkWin(){const aliveF=game.activeFactions.filter(f=>game.alive(f).length>0);if(aliveF.length<=1){endGame(aliveF[0]);return}const nonSolo=aliveF.filter(f=>game.teamOf(f)!=='S');if(nonSolo.length>0){const t=game.teamOf(nonSolo[0]);if(nonSolo.every(f=>game.teamOf(f)===t)&&aliveF.length===nonSolo.length){endGame(nonSolo[0],true)}}else if(aliveF.length===1)endGame(aliveF[0])}
+function endGame(wf,isTeam){if(game.over)return;game.over=true;const t=document.getElementById('over-title'),d=document.getElementById('over-desc');if(wf){t.innerText=`${FNAME[wf]}获胜！`;t.style.color=FCOLOR[wf];d.innerText=game.isHuman(wf)?`恭喜玩家${game.controllers[wf]}一统天下！`:`${FNAME[wf]}（AI）席卷八荒！`}else{t.innerText='同归于尽';t.style.color='#999';d.innerText='战场上已无一人...'}setTimeout(()=>document.getElementById('over-panel').style.display='flex',800)}
+
+function aiTurn(faction){if(game.over)return;const my=game.alive(faction);if(my.length===0){game.nextTurn();return}let delay=0;my.forEach(u=>{if(u.skipped){u.skipped=false;return}setTimeout(()=>aiAct(u),delay);delay+=800});setTimeout(()=>{if(!game.over)game.nextTurn()},delay+400)}
+function aiAct(unit){
+if(unit.hp<=0||game.over||unit._noAttack)return;
+const enemies=game.allAlive().filter(u=>u.team!==unit.team&&!game.sameTeam(unit.team,u.team));
+if(!enemies.length)return;
+let nearest=null,md=999;enemies.forEach(e=>{const d=hexDist(unit.x,unit.y,e.x,e.y);if(d<md){md=d;nearest=e}});
+const steps=game.moveSteps(unit);let pos={x:unit.x,y:unit.y};
+for(let s=0;s<steps;s++){const nb=hexNeighbors(pos.x,pos.y);let best=null,bd=hexDist(pos.x,pos.y,nearest.x,nearest.y);for(const n of nb){if(game.unitAt(n.x,n.y))continue;if(game.terrain[`${n.x},${n.y}`]&&!['骑袭','白衣','楼船','守城','蛮战','蛮力','蛮骑'].includes(unit.skill))continue;const d=hexDist(n.x,n.y,nearest.x,nearest.y);if(d<bd){bd=d;best=n}}if(best)pos=best}
+if(pos.x!==unit.x||pos.y!==unit.y){unit.x=pos.x;unit.y=pos.y;unit.moved=true;render();if(!['骑袭','白衣','楼船','守城','蛮战','蛮力','蛮骑'].includes(unit.skill))checkTrap(unit)}
+setTimeout(()=>{
+if(unit.hp<=0||game.over)return;
+if(hexDist(unit.x,unit.y,nearest.x,nearest.y)<=game.atkRange(unit)){
+let dmg=calcAttackDmg(unit,nearest,{dmg:1,fire:false,elem:'jin'});if(dmg<=0)return;
+let blocked=applyDefenseCheck(unit,nearest,{elem:'jin',fire:false});if(!blocked)dmg=applyDefenseReduction(nearest,dmg);
+if(blocked){showMsg(`🛡️攻击被挡`);unit.attacked=true;render();return}
+const shanCards=(game.hands[nearest.team]||[]).filter(c=>c.name==='闪');
+if(shanCards.length>0){consumeFromHand(nearest.team,shanCards[0]);showMsg(`🛡️${nearest.name}出闪抵消！`);unit.attacked=true;render();return}
+dealDmg(nearest,dmg,unit,null);}render();},350);
+}
+
+// ===================================================================
+//  UI 辅助函数
+// ===================================================================
+const handArea=document.getElementById('hand-area'),msgBox=document.getElementById('msg-box');
+function renderHand(){handArea.innerHTML='';if(!game.isMe(game.curFaction)||game.waitingConfirm)return;game.curHand().forEach(c=>{const div=document.createElement('div');const isEq=(c.type==='weapon'||c.type==='armor');div.className=`card elem-${isEq?'equip':c.elem} ${game.selCard===c.id?'selected':''}`;div.innerHTML=`<div class="card-top">${c.name}<div class="card-elem">${isEq?'⚙️':'['+c.elem.toUpperCase()+']'}</div></div><div class="card-desc">${c.desc}</div>`;div.onclick=()=>{if(!game.isMe(game.curFaction)||game.over||game.waitingConfirm||pendingResponse)return;game.selCard=(game.selCard===c.id)?null:c.id;renderHand();render()};handArea.appendChild(div)})}
+function renderEquipPanel(){const list=document.getElementById('equip-list');if(!list)return;list.innerHTML='';game.units.forEach(u=>{if(u.hp<=0)return;const div=document.createElement('div');div.className='eq-unit'+(u._open?' open':'');const who=game.isHuman(u.team)?'P'+game.controllers[u.team]:'AI';const t=game.teamOf(u.team);div.innerHTML=`<div class="eq-head"><span class="eq-dot" style="background:${FCOLOR[u.team]}"></span><span class="eq-name">${u.name}</span><span style="color:${TEAM_COLOR[t]};font-size:9px">[${TEAM_NAME[t][0]}]</span><span style="color:#888;font-size:10px">${who}</span><span class="eq-hp">❤${u.hp}/${u.maxHp}</span></div><div class="eq-icons">${u.weapon?'⚔️'+u.weapon.name:'⚔️无'} ${u.armor?'🛡️'+u.armor.name:'🛡️无'}</div><div class="eq-detail"><span class="sk">【${u.skill}】</span>${u.sdesc}<br><span class="wp">⚔️</span>${u.weapon?u.weapon.desc:'无'}<br><span class="ar">🛡️</span>${u.armor?u.armor.desc:'无'}</div>`;div.onclick=()=>{u._open=!u._open;renderEquipPanel()};list.appendChild(div)})}
+function buildBadges(){const row=document.getElementById('badge-row');row.innerHTML='';game.activeFactions.forEach(f=>{const span=document.createElement('span');span.className='fbadge';span.id='bd-'+f;span.style.background=FCOLOR[f];row.appendChild(span)})}
+function showMsg(t){msgBox.innerText=t;msgBox.style.opacity=1;clearTimeout(msgBox._t);msgBox._t=setTimeout(()=>msgBox.style.opacity=0,2000)}
+function updateTop(){const f=game.curFaction;const who=game.isHuman(f)?`玩家${game.controllers[f]}`:'AI';document.getElementById('turn-info').innerText=`回合${game.turnCount}：${FNAME[f]}（${who}）`;document.getElementById('turn-info').style.color=FCOLOR[f];game.activeFactions.forEach(fa=>{const bd=document.getElementById('bd-'+fa);if(!bd)return;const n=game.alive(fa).length;const tag=game.isHuman(fa)?'P'+game.controllers[fa]:'AI';const t=game.teamOf(fa);bd.innerText=`${FNAME[fa][0]}·${tag}${t!=='S'?'·'+TEAM_NAME[t][0]:''}×${n}`;bd.className='fbadge'+(n===0?' dead':'');bd.style.background=FCOLOR[fa]})}
+document.body.prepend(cvs);
+
+// 自动连接
+net.connect();
+</script>
+</body>
+</html>
