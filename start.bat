@@ -7,4 +7,4 @@ fltmc >nul 2>&1 || (
     powershell -Command "Start-Process cmd -ArgumentList '/c ""%~f0""' -Verb RunAs"
     exit
 )
-powershell.exe -ExecutionPolicy Bypass -File ".\start.ps1"
+powershell.exe -ExecutionPolicy Bypass -File ".\server.ps1"

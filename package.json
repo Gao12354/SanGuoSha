@@ -1,7 +1,7 @@
 {
   "name": "zzcniubi",
   "version": "1.0.0",
-  "description": "",
+  "description": "1.无任何氪金内容！",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -13,6 +13,16 @@
   "type": "commonjs",
   "dependencies": {
     "build": "^0.1.4",
+    "express": "^5.2.1",
+    "socket.io": "^4.8.3",
     "ws": "^8.21.3"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Gao12354/SanGuoSha.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Gao12354/SanGuoSha/issues"
+  },
+  "homepage": "https://github.com/Gao12354/SanGuoSha#readme"
 }

@@ -13,12 +13,21 @@
 服务器还没建好,只能自己部署在本地了,尽快修复.
 
 ## 三.自己部署 ##
+
+### 自动部署 ###
+1. 参考 `手动部署-1.` 安装 `Node.js` 环境.
+2. 从版本中选择带有 `AutoStart` 前缀的版本( `V1.0.0-Release` 及以后的版本直接下载即可),下载到本地后解压.
+3. 双击 `start.bat` 启动即可.
+__恭喜你!成功完成!__
+
+### 手动部署 ###
+提示:上方有 __自动部署__ .
 ### 1.安装 JS 环境 ###
-访问Node.js官网 <https://nodejs.org/zh-cn>,全默认即可下载.msi文件后安装(最好记一下安装目录备用).
+访问 `Node.js` 官网 <https://nodejs.org/zh-cn>,全默认即可下载 `.msi` 文件后安装(最好记一下安装目录备用).
 
-安装完成后最好重启,更新一下Path
+安装完成后最好重启,更新一下 `Path` .
 
-输入以下命令检验安装是否成功
+输入以下命令检验安装是否成功.
 ~~~ bash
 node -v
 ~~~
@@ -36,13 +45,13 @@ node : 无法将“node”项识别为 cmdlet、函数、脚本文件或可运�
     + CategoryInfo          : ObjectNotFound: (node:String) [], CommandNotFoundException
     + FullyQualifiedErrorId : CommandNotFoundException
 ~~~
-右键`计算机` -> `属性` -> `高级系统设置` -> `环境变量` -> 双击`Path` -> `新建` -> 把刚才的安装目录末尾加 `\bin` 输入
+右键 `计算机` -> `属性` -> `高级系统设置` -> `环境变量` -> 双击 `Path` -> `新建` -> 把刚才的安装目录末尾加 `\bin` 输入.
 ### 2.下载游戏 ### 
-在GitHub界面点击`Releases`中最新的版本,下载`.zip`的压缩包，并在本地解压.
+在GitHub界面点击 `Releases` 中最新的版本,下载 `.7z` 的压缩包，并在本地解压.
 ### 3.运行！ ###
-打开解压后的文件夹
+打开解压后的文件夹.
 
-打开`PowerShell`分别输入以下命令,使得能看到`server.js`:
+打开 `PowerShell` 分别输入以下命令,使得能看到 `server.js` :
 ~~~ bash
 cd "你解压的文件夹 如:C:\Users\Name\Desktop\SanGuoSha"
 npm init -y
