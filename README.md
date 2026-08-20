@@ -50,5 +50,3 @@ npm install ws
 node server.js
 ~~~
 __恭喜你!成功完成!__
-
-[下一步平衡武将系统](https://www.luogu.com.cn/article/ixmmi9aw)

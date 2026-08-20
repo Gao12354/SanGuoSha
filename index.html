@@ -1,0 +1,1981 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+	<meta charset="UTF-8">
+	<title>乱世·弈界 - 联机版</title>
+	<style>
+		/* === 聊天系统样式 === */
+		#chat-panel {
+			position: fixed;
+			bottom: 8px;
+			left: 8px;
+			width: 320px;
+			background: rgba(15, 15, 30, .92);
+			border: 1px solid #d4af37;
+			border-radius: 8px;
+			z-index: 25;
+			display: flex;
+			flex-direction: column;
+			font-size: 13px;
+			transition: opacity .3s;
+		}
+
+		#chat-panel.minimized {
+			height: 36px;
+			overflow: hidden;
+		}
+
+		#chat-header {
+			padding: 6px 12px;
+			background: rgba(212, 175, 55, .15);
+			cursor: pointer;
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			color: #ffd700;
+			font-weight: bold;
+			user-select: none;
+		}
+
+		#chat-body {
+			flex: 1;
+			display: flex;
+			flex-direction: column;
+			min-height: 0;
+		}
+
+		#chat-tabs {
+			display: flex;
+			border-bottom: 1px solid #444;
+		}
+
+		.chat-tab {
+			flex: 1;
+			padding: 5px;
+			text-align: center;
+			cursor: pointer;
+			color: #888;
+			font-size: 12px;
+			transition: .2s;
+		}
+
+		.chat-tab.active {
+			color: #ffd700;
+			background: rgba(255, 215, 0, .1);
+		}
+
+		#chat-messages {
+			flex: 1;
+			overflow-y: auto;
+			padding: 6px 10px;
+			max-height: 200px;
+			min-height: 120px;
+			line-height: 1.5;
+			word-break: break-all;
+		}
+
+		#chat-messages::-webkit-scrollbar {
+			width: 4px;
+		}
+
+		#chat-messages::-webkit-scrollbar-thumb {
+			background: #555;
+			border-radius: 2px;
+		}
+
+		.chat-line {
+			margin: 2px 0;
+		}
+
+		.chat-line .cname {
+			font-weight: bold;
+			margin-right: 4px;
+		}
+
+		.chat-line.sys {
+			color: #f39c12;
+			font-style: italic;
+		}
+
+		.chat-line.team {
+			color: #7bed9f;
+		}
+
+		.chat-line.all {
+			color: #ccc;
+		}
+
+		#chat-input-row {
+			display: flex;
+			border-top: 1px solid #444;
+		}
+
+		#chat-channel-btn {
+			padding: 6px 10px;
+			background: rgba(255, 215, 0, .1);
+			color: #ffd700;
+			border: none;
+			cursor: pointer;
+			font-size: 12px;
+			white-space: nowrap;
+			font-family: inherit;
+		}
+
+		#chat-channel-btn:hover {
+			background: rgba(255, 215, 0, .2);
+		}
+
+		#chat-input {
+			flex: 1;
+			padding: 6px 10px;
+			background: transparent;
+			border: none;
+			color: #eee;
+			font-size: 13px;
+			outline: none;
+			font-family: inherit;
+		}
+
+		#chat-send {
+			padding: 6px 14px;
+			background: #d4af37;
+			color: #1a1a2e;
+			border: none;
+			cursor: pointer;
+			font-weight: bold;
+			font-family: inherit;
+		}
+
+		#chat-send:hover {
+			background: #ffd700;
+		}
+
+		/* 未读提示小红点 */
+		.chat-tab .unread {
+			display: inline-block;
+			width: 7px;
+			height: 7px;
+			background: #e74c3c;
+			border-radius: 50%;
+			margin-left: 3px;
+			vertical-align: middle;
+		}
+
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box
+		}
+
+		body {
+			overflow: hidden;
+			background: #1a1a2e;
+			font-family: 'STKaiti', 'KaiTi', serif;
+			user-select: none;
+			color: #eee
+		}
+
+		canvas {
+			display: block;
+			cursor: crosshair
+		}
+
+		.screen {
+			position: fixed;
+			inset: 0;
+			z-index: 200;
+			background: radial-gradient(ellipse at center, #2a2a4e 0%, #12121f 100%);
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+			overflow-y: auto;
+			padding: 20px
+		}
+
+		h1.title {
+			font-size: 52px;
+			color: #ffd700;
+			letter-spacing: 10px;
+			text-shadow: 0 0 40px rgba(255, 215, 0, .6);
+			margin-bottom: 8px
+		}
+
+		.sub {
+			color: #aaa;
+			font-size: 17px;
+			margin-bottom: 25px;
+			letter-spacing: 3px
+		}
+
+		.lobby-box,
+		.setup-panel {
+			background: rgba(255, 255, 255, .05);
+			border: 2px solid #555;
+			border-radius: 14px;
+			padding: 22px 30px;
+			margin-top: 15px;
+			text-align: center;
+			max-width: 600px;
+			width: 90%
+		}
+
+		.setup-panel .row,
+		.lobby-box .row {
+			margin: 10px 0;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 10px;
+			flex-wrap: wrap
+		}
+
+		.setup-panel label,
+		.lobby-box label {
+			font-size: 17px;
+			color: #ddd
+		}
+
+		.setup-panel input,
+		.setup-panel select,
+		.lobby-box input {
+			width: 90px;
+			padding: 7px 10px;
+			font-size: 17px;
+			background: #2a2a4e;
+			color: #ffd700;
+			border: 2px solid #d4af37;
+			border-radius: 8px;
+			text-align: center;
+			font-family: inherit
+		}
+
+		.lobby-box input.name {
+			width: 180px
+		}
+
+		.big-btn {
+			margin-top: 15px;
+			padding: 14px 40px;
+			font-size: 20px;
+			background: #c0392b;
+			color: #fff;
+			border: 2px solid #fff;
+			border-radius: 10px;
+			cursor: pointer;
+			font-family: inherit;
+			transition: .3s
+		}
+
+		.big-btn:hover {
+			background: #e74c3c;
+			transform: scale(1.05)
+		}
+
+		.big-btn.green {
+			background: #27ae60
+		}
+
+		.big-btn.green:hover {
+			background: #2ecc71
+		}
+
+		.big-btn.blue {
+			background: #2980b9
+		}
+
+		.big-btn.blue:hover {
+			background: #3498db
+		}
+
+		.room-code {
+			font-size: 34px;
+			color: #ffd700;
+			letter-spacing: 6px;
+			margin: 10px 0;
+			font-weight: bold
+		}
+
+		.player-list {
+			margin: 12px 0;
+			text-align: left;
+			min-width: 220px
+		}
+
+		.player-list div {
+			padding: 6px 14px;
+			margin: 3px 0;
+			background: rgba(255, 255, 255, .05);
+			border-radius: 6px;
+			font-size: 15px
+		}
+
+		.player-list div.host::after {
+			content: ' 👑';
+		}
+
+		.waiting-text {
+			color: #aaa;
+			font-size: 14px;
+			margin-top: 10px;
+			animation: blink 1.5s infinite
+		}
+
+		@keyframes blink {
+
+			0%,
+			100% {
+				opacity: 1
+			}
+
+			50% {
+				opacity: .4
+			}
+		}
+
+		.team-row {
+			display: flex;
+			gap: 12px;
+			align-items: center;
+			margin: 8px 0;
+			padding: 10px 18px;
+			background: rgba(255, 255, 255, .05);
+			border-radius: 10px;
+			flex-wrap: wrap
+		}
+
+		.team-row .pname {
+			width: 90px;
+			font-size: 17px;
+			font-weight: bold
+		}
+
+		.team-btn {
+			padding: 7px 15px;
+			border-radius: 8px;
+			cursor: pointer;
+			border: 2px solid #555;
+			background: transparent;
+			color: #ccc;
+			font-family: inherit;
+			font-size: 14px;
+			transition: .2s;
+			margin: 2px
+		}
+
+		.team-btn.active-A {
+			border-color: #e74c3c;
+			background: rgba(231, 76, 60, .25);
+			color: #fff
+		}
+
+		.team-btn.active-B {
+			border-color: #3498db;
+			background: rgba(52, 152, 219, .25);
+			color: #fff
+		}
+
+		.team-btn.active-C {
+			border-color: #2ecc71;
+			background: rgba(46, 204, 113, .25);
+			color: #fff
+		}
+
+		.team-btn.active-D {
+			border-color: #f39c12;
+			background: rgba(243, 156, 18, .25);
+			color: #fff
+		}
+
+		.team-btn.active-S {
+			border-color: #f39c12;
+			background: rgba(243, 156, 18, .25);
+			color: #fff
+		}
+
+		.faction-row {
+			display: flex;
+			gap: 10px;
+			margin-bottom: 20px;
+			flex-wrap: wrap;
+			justify-content: center
+		}
+
+		.faction-pick {
+			width: 90px;
+			padding: 12px 6px;
+			border-radius: 10px;
+			text-align: center;
+			cursor: pointer;
+			border: 3px solid #444;
+			transition: .2s;
+			font-size: 16px;
+			font-weight: bold
+		}
+
+		.faction-pick:hover {
+			transform: translateY(-4px)
+		}
+
+		.faction-pick.taken {
+			opacity: .3;
+			pointer-events: none
+		}
+
+		.faction-pick.chosen {
+			border-color: #ffd700;
+			box-shadow: 0 0 20px rgba(255, 215, 0, .5)
+		}
+
+		.general-grid {
+			display: flex;
+			gap: 12px;
+			flex-wrap: wrap;
+			justify-content: center;
+			max-width: 1100px
+		}
+
+		.general-card {
+			width: 145px;
+			padding: 12px 8px;
+			background: rgba(255, 255, 255, .06);
+			border: 2px solid #555;
+			border-radius: 10px;
+			cursor: pointer;
+			transition: .2s;
+			text-align: center
+		}
+
+		.general-card:hover {
+			border-color: #ffd700;
+			transform: translateY(-5px)
+		}
+
+		.general-card.picked {
+			border-color: #2ecc71;
+			background: rgba(46, 204, 113, .2)
+		}
+
+		.general-card .gname {
+			font-size: 18px;
+			font-weight: bold;
+			color: #ffd700
+		}
+
+		.general-card .ghp {
+			font-size: 12px;
+			color: #2ecc71;
+			margin: 3px 0
+		}
+
+		.general-card .gskill {
+			font-size: 13px;
+			color: #7bed9f;
+			margin: 3px 0
+		}
+
+		.general-card .gdesc {
+			font-size: 11px;
+			color: #bbb;
+			line-height: 1.3;
+			min-height: 44px
+		}
+
+		.pick-status {
+			font-size: 19px;
+			color: #ffd700;
+			margin: 15px 0
+		}
+
+		.hidden {
+			display: none !important
+		}
+
+		#ui-top {
+			position: fixed;
+			top: 0;
+			left: 0;
+			right: 0;
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			padding: 6px 12px;
+			background: rgba(20, 20, 40, .93);
+			border-bottom: 2px solid #d4af37;
+			z-index: 10;
+			flex-wrap: wrap
+		}
+
+		.fbadge {
+			padding: 3px 8px;
+			border-radius: 4px;
+			font-size: 11px;
+			font-weight: bold;
+			color: #fff;
+			margin: 1px;
+			white-space: nowrap
+		}
+
+		.fbadge.dead {
+			opacity: .35;
+			text-decoration: line-through
+		}
+
+		#turn-info {
+			color: #ffd700;
+			font-size: 15px;
+			font-weight: bold
+		}
+
+		#equip-panel {
+			position: fixed;
+			top: 50px;
+			right: 8px;
+			width: 210px;
+			max-height: calc(100vh - 220px);
+			overflow-y: auto;
+			background: rgba(15, 15, 30, .92);
+			border: 1px solid #d4af37;
+			border-radius: 8px;
+			padding: 8px;
+			z-index: 12;
+			font-size: 12px
+		}
+
+		#equip-panel h3 {
+			color: #ffd700;
+			font-size: 13px;
+			text-align: center;
+			margin-bottom: 5px;
+			border-bottom: 1px solid #555;
+			padding-bottom: 4px
+		}
+
+		.eq-unit {
+			border: 1px solid #444;
+			border-radius: 6px;
+			margin-bottom: 4px;
+			overflow: hidden;
+			cursor: pointer
+		}
+
+		.eq-head {
+			display: flex;
+			align-items: center;
+			gap: 5px;
+			padding: 4px 6px;
+			background: rgba(255, 255, 255, .05);
+			font-size: 12px
+		}
+
+		.eq-dot {
+			width: 9px;
+			height: 9px;
+			border-radius: 50%
+		}
+
+		.eq-name {
+			font-weight: bold
+		}
+
+		.eq-hp {
+			margin-left: auto;
+			color: #2ecc71;
+			font-size: 11px
+		}
+
+		.eq-icons {
+			font-size: 10px;
+			color: #bbb;
+			padding: 2px 6px
+		}
+
+		.eq-detail {
+			display: none;
+			padding: 5px;
+			background: rgba(0, 0, 0, .4);
+			line-height: 1.4;
+			font-size: 11px;
+			border-top: 1px dashed #555
+		}
+
+		.eq-unit.open .eq-detail {
+			display: block
+		}
+
+		.eq-detail .sk {
+			color: #7bed9f
+		}
+
+		.eq-detail .wp {
+			color: #f39c12
+		}
+
+		.eq-detail .ar {
+			color: #74b9ff
+		}
+
+		#tooltip {
+			position: fixed;
+			display: none;
+			background: rgba(10, 10, 25, .96);
+			border: 1px solid #d4af37;
+			border-radius: 8px;
+			padding: 9px 12px;
+			font-size: 12.5px;
+			line-height: 1.6;
+			z-index: 60;
+			pointer-events: none;
+			max-width: 250px
+		}
+
+		#hand-area {
+			position: fixed;
+			bottom: 8px;
+			left: 50%;
+			transform: translateX(-50%);
+			display: flex;
+			gap: 8px;
+			padding: 10px 14px;
+			background: rgba(20, 15, 10, .95);
+			border: 2px solid #d4af37;
+			border-radius: 10px;
+			max-width: 96vw;
+			overflow-x: auto;
+			z-index: 20;
+			align-items: flex-end
+		}
+
+		.card {
+			width: 95px;
+			height: 130px;
+			border: 2px solid #5c4033;
+			border-radius: 7px;
+			display: flex;
+			flex-direction: column;
+			justify-content: space-between;
+			align-items: center;
+			cursor: pointer;
+			transition: all .2s;
+			color: #fff;
+			text-shadow: 1px 1px 2px #000;
+			padding: 5px 3px;
+			flex-shrink: 0
+		}
+
+		.card:hover {
+			transform: translateY(-14px) scale(1.05);
+			z-index: 30
+		}
+
+		.card.selected {
+			transform: translateY(-22px);
+			box-shadow: 0 0 20px #ffd700;
+			border-color: #ffd700;
+			z-index: 31
+		}
+
+		.card-top {
+			font-weight: bold;
+			font-size: 14px;
+			text-align: center;
+			line-height: 1.2;
+			margin-top: 3px
+		}
+
+		.card-elem {
+			font-size: 10px;
+			opacity: .85
+		}
+
+		.card-desc {
+			background: rgba(255, 255, 255, .92);
+			color: #222;
+			font-size: 11px;
+			line-height: 1.3;
+			padding: 3px 4px;
+			border-radius: 4px;
+			text-align: center;
+			width: 94%;
+			text-shadow: none;
+			margin-bottom: 3px;
+			min-height: 32px;
+			display: flex;
+			align-items: center;
+			justify-content: center
+		}
+
+		.elem-jin {
+			background: linear-gradient(160deg, #95a5a6, #dfe6e9);
+			color: #2d3436 !important
+		}
+
+		.elem-mu {
+			background: linear-gradient(160deg, #1e8449, #58d68d)
+		}
+
+		.elem-shui {
+			background: linear-gradient(160deg, #1a5276, #5dade2)
+		}
+
+		.elem-huo {
+			background: linear-gradient(160deg, #922b21, #f1948a)
+		}
+
+		.elem-tu {
+			background: linear-gradient(160deg, #935116, #f0b27a)
+		}
+
+		.elem-equip {
+			background: linear-gradient(160deg, #6c3483, #bb8fce)
+		}
+
+		#msg-box {
+			position: fixed;
+			top: 20%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			background: rgba(0, 0, 0, .9);
+			color: #ffd700;
+			padding: 16px 35px;
+			border-radius: 10px;
+			font-size: 20px;
+			pointer-events: none;
+			opacity: 0;
+			transition: opacity .3s;
+			border: 2px solid #d4af37;
+			z-index: 50;
+			white-space: pre-line;
+			text-align: center;
+			max-width: 80vw
+		}
+
+		#end-turn-btn {
+			position: fixed;
+			right: 18px;
+			bottom: 40px;
+			padding: 12px 28px;
+			background: linear-gradient(135deg, #8b4513, #a0522d);
+			color: #ffd700;
+			border-radius: 8px;
+			cursor: pointer;
+			font-size: 18px;
+			border: 2px solid #d4af37;
+			z-index: 20;
+			font-weight: bold;
+			transition: .3s
+		}
+
+		#end-turn-btn:hover {
+			transform: scale(1.06)
+		}
+
+		#turn-overlay {
+			position: fixed;
+			inset: 0;
+			background: rgba(5, 5, 15, .97);
+			z-index: 150;
+			display: none;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center
+		}
+
+		#turn-overlay h1 {
+			font-size: 42px;
+			margin-bottom: 12px
+		}
+
+		#turn-overlay p {
+			font-size: 18px;
+			color: #aaa;
+			margin-bottom: 30px
+		}
+
+		#turn-overlay button {
+			padding: 14px 50px;
+			font-size: 22px;
+			background: #c0392b;
+			color: #fff;
+			border: 2px solid #fff;
+			border-radius: 10px;
+			cursor: pointer;
+			font-family: inherit
+		}
+
+		#over-panel {
+			position: fixed;
+			inset: 0;
+			background: rgba(0, 0, 0, .94);
+			z-index: 180;
+			display: none;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center
+		}
+
+		#over-panel h1 {
+			font-size: 54px;
+			margin-bottom: 15px;
+			text-shadow: 0 0 40px currentColor
+		}
+
+		#over-panel p {
+			font-size: 22px;
+			margin-bottom: 30px;
+			color: #ddd;
+			text-align: center;
+			max-width: 500px
+		}
+
+		#over-panel button {
+			padding: 14px 45px;
+			background: #c0392b;
+			color: #fff;
+			border: 2px solid #fff;
+			border-radius: 10px;
+			font-size: 22px;
+			cursor: pointer;
+			font-family: inherit
+		}
+
+		#response-overlay {
+			position: fixed;
+			inset: 0;
+			background: rgba(0, 0, 0, .85);
+			z-index: 160;
+			display: none;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center
+		}
+
+		#response-overlay .resp-title {
+			font-size: 28px;
+			color: #ffd700;
+			margin-bottom: 10px
+		}
+
+		#response-overlay .resp-desc {
+			font-size: 16px;
+			color: #ccc;
+			margin-bottom: 20px;
+			text-align: center;
+			max-width: 450px;
+			line-height: 1.5
+		}
+
+		#response-overlay .resp-cards {
+			display: flex;
+			gap: 12px;
+			flex-wrap: wrap;
+			justify-content: center;
+			margin-bottom: 20px
+		}
+
+		#response-overlay .resp-btn-skip {
+			padding: 10px 35px;
+			font-size: 17px;
+			background: #555;
+			color: #fff;
+			border: 2px solid #888;
+			border-radius: 8px;
+			cursor: pointer;
+			font-family: inherit
+		}
+
+		#net-status {
+			position: fixed;
+			top: 6px;
+			left: 50%;
+			transform: translateX(-50%);
+			font-size: 12px;
+			color: #888;
+			z-index: 5
+		}
+	</style>
+</head>
+
+<body>
+
+	<div id="lobby-screen" class="screen">
+		<h1 class="title">乱世·弈界</h1>
+		<div class="sub">—— 联机对战 ——</div>
+		<div class="lobby-box">
+			<div class="row"><label>昵称：</label><input id="inp-name" class="name" maxlength="6" placeholder="输入昵称"></div>
+			<div style="display:flex;gap:15px;justify-content:center;margin-top:15px">
+				<button class="big-btn green" onclick="netCreate()">创建房间</button>
+				<button class="big-btn blue" onclick="toggleJoin()">加入房间</button>
+			</div>
+			<div id="join-box" class="hidden" style="margin-top:15px">
+				<input id="inp-room" placeholder="房间号" maxlength="5" style="text-transform:uppercase;width:140px">
+				<br><button class="big-btn" style="padding:10px 30px;font-size:16px" onclick="netJoin()">加 入</button>
+			</div>
+		</div>
+	</div>
+
+	<div id="wait-screen" class="screen hidden">
+		<h1 class="title" style="font-size:36px">等待室</h1>
+		<div class="sub">把房间号分享给好友</div>
+		<div class="room-code" id="room-code"></div>
+		<div class="player-list" id="player-list"></div>
+		<div class="setup-panel hidden" id="host-config">
+			<div class="row"><label>AI势力数：</label><input type="number" id="inp-ai" min="0" max="9" value="2"></div>
+			<div class="row"><label>队伍数量：</label><select id="inp-teams">
+					<option value="2">2队</option>
+					<option value="3">3队</option>
+					<option value="4">4队</option>
+				</select></div>
+			<button class="big-btn" onclick="hostStart()">开始游戏</button>
+		</div>
+		<div class="waiting-text" id="wait-text">等待房主开始…</div>
+	</div>
+
+	<div id="team-screen" class="screen hidden">
+		<h1 class="title" style="font-size:38px">选择队伍</h1>
+		<div class="sub" id="team-sub"></div>
+		<div id="team-list"></div>
+		<button class="big-btn" id="btn-team" onclick="confirmTeam()">确认队伍</button>
+		<div class="waiting-text hidden" id="team-wait">等待所有玩家选择队伍…</div>
+	</div>
+
+	<div id="pick-screen" class="screen hidden">
+		<h1 class="title" style="font-size:36px" id="pick-title">选将</h1>
+		<div class="sub" id="pick-sub"></div>
+		<div class="faction-row" id="faction-row"></div>
+		<div class="general-grid" id="general-grid"></div>
+		<div class="pick-status" id="pick-status"></div>
+		<button class="big-btn" id="confirm-pick" style="display:none" onclick="confirmPick()">确认出战</button>
+		<div class="waiting-text hidden" id="pick-wait">等待中…</div>
+	</div>
+
+	<div id="ui-top" class="hidden"><span id="badge-row"></span><span id="turn-info">回合</span></div>
+	<div id="equip-panel" class="hidden">
+		<h3>⚔️ 武将总览</h3>
+		<div id="equip-list"></div>
+	</div>
+	<div id="tooltip"></div>
+	<div id="msg-box"></div>
+	<div id="hand-area" class="hidden"></div>
+	<div id="end-turn-btn" class="hidden" onclick="clickEndTurn()">⚔️ 结束回合</div>
+	<div id="turn-overlay">
+		<h1 id="ov-title"></h1>
+		<p id="ov-desc"></p><button onclick="confirmTurnStart()">开始回合</button>
+	</div>
+	<div id="over-panel">
+		<h1 id="over-title"></h1>
+		<p id="over-desc"></p><button onclick="location.reload()">返回主页</button>
+	</div>
+	<div id="response-overlay">
+		<div class="resp-title" id="resp-title"></div>
+		<div class="resp-desc" id="resp-desc"></div>
+		<div class="resp-cards" id="resp-cards"></div>
+		<button class="resp-btn-skip" id="resp-skip" onclick="respChoose(false,0)">放弃响应</button>
+	</div>
+	<div id="net-status"></div>
+
+	<div id="chat-panel" class="minimized">
+		<div id="chat-header" onclick="toggleChat()">
+			<span>💬 聊天</span><span id="chat-toggle-icon">▲</span>
+		</div>
+		<div id="chat-body">
+			<div id="chat-tabs">
+				<div class="chat-tab active" data-ch="all" onclick="switchChatTab('all')">全部</div>
+				<div class="chat-tab" data-ch="team" onclick="switchChatTab('team')">队伍</div>
+				<div class="chat-tab" data-ch="lobby" onclick="switchChatTab('lobby')">大厅</div>
+			</div>
+			<div id="chat-messages"></div>
+			<div id="chat-input-row">
+				<button id="chat-channel-btn" onclick="cycleChannel()">全部</button>
+				<input id="chat-input" placeholder="输入消息…" maxlength="100"
+					onkeydown="if(event.key==='Enter')sendChat()">
+				<button id="chat-send" onclick="sendChat()">发送</button>
+			</div>
+		</div>
+	</div>
+
+	<script src="/socket.io/socket.io.js"></script>
+	<script>
+		/* ==================== 常量 ==================== */
+		const PICK_COUNT = 3;
+		const FORDER = ['shu', 'wei', 'wu', 'qun', 'jin', 'chu', 'yan', 'liang', 'nan', 'bei'];
+		const FNAME = { shu: '蜀汉', wei: '曹魏', wu: '东吴', qun: '群雄', jin: '大晋', chu: '西楚', yan: '燕国', liang: '梁军', nan: '南蛮', bei: '北疆' };
+		const FCOLOR = { shu: '#27ae60', wei: '#2980b9', wu: '#e67e22', qun: '#8e44ad', jin: '#c0392b', chu: '#2c3e50', yan: '#1abc9c', liang: '#d35400', nan: '#1e8449', bei: '#5d6d7e' };
+		const TEAM_NAME = { A: '甲字队', B: '乙字队', C: '丙字队', D: '丁字队', S: '单干' };
+		const TEAM_COLOR = { A: '#e74c3c', B: '#3498db', C: '#2ecc71', D: '#f39c12', S: '#f39c12' };
+
+		const CARDS = [
+			{ name: '杀', elem: 'jin', type: 'attack', dmg: 1, desc: '造成1点伤害（每回合限1张）', w: 3 },
+			{ name: '杀', elem: 'jin', type: 'attack', dmg: 1, desc: '造成1点伤害（每回合限1张）', w: 3 },
+			{ name: '杀', elem: 'jin', type: 'attack', dmg: 1, desc: '造成1点伤害（每回合限1张）', w: 3 },
+			{ name: '火杀', elem: 'huo', type: 'attack', dmg: 1, fire: true, desc: '火伤1点（每回合限1张）', w: 2 },
+			{ name: '火攻', elem: 'huo', type: 'fire_attack', dmg: 1, fire: true, desc: '火伤1点，不限次数', w: 2 },
+			{ name: '闪', elem: 'mu', type: 'defend', desc: '抵消一次杀/火杀', w: 3 },
+			{ name: '闪', elem: 'mu', type: 'defend', desc: '抵消一次杀/火杀', w: 2 },
+			{ name: '桃', elem: 'shui', type: 'heal', amount: 1, desc: '恢复1点体力', w: 2 },
+			{ name: '桃', elem: 'shui', type: 'heal', amount: 1, desc: '恢复1点体力', w: 2 },
+			{ name: '落石', elem: 'tu', type: 'terrain', trap: '伏兵', desc: '布置陷阱，踏入者受2点伤害', w: 1 },
+			{ name: '青龙刀', elem: 'equip', type: 'weapon', range: 2, desc: '攻击范围变为2格', w: 1 },
+			{ name: '丈八矛', elem: 'equip', type: 'weapon', bonusDmg: 1, desc: '攻击伤害+1', w: 1 },
+			{ name: '方天戟', elem: 'equip', type: 'weapon', range: 2, bonusDmg: 1, desc: '范围2格且伤害+1', w: 1 },
+			{ name: '八卦阵', elem: 'equip', type: 'armor', blockRate: .5, desc: '50%概率免疫一次杀', w: 1 },
+			{ name: '藤甲', elem: 'equip', type: 'armor', fireWeak: true, desc: '免疫普通杀，火杀+1', w: 1 },
+			{ name: '仁王盾', elem: 'equip', type: 'armor', blockJin: true, desc: '免疫金属性普通杀', w: 1 },
+		];
+		const WEIGHTED_POOL = []; CARDS.forEach(c => { for (let i = 0; i < (c.w || 1); i++)WEIGHTED_POOL.push(c) });
+
+		const GENERAL_POOL = {
+			shu: [{ id: 'liubei', name: '刘备', hp: 4, maxHp: 4, skill: '仁德', sdesc: '回合开始为血量最低己方回1血' }, { id: 'guanyu', name: '关羽', hp: 5, maxHp: 5, skill: '武圣', sdesc: '体力高于目标时杀伤害+1' }, { id: 'zhangfei', name: '张飞', hp: 5, maxHp: 5, skill: '咆哮', sdesc: '每回合可出2张杀' }, { id: 'zhaoyun', name: '赵云', hp: 4, maxHp: 4, skill: '龙胆', sdesc: '移动+1，移动后仍可攻击' }, { id: 'zhugeliang', name: '诸葛亮', hp: 3, maxHp: 3, skill: '智谋', sdesc: '摸牌阶段额外摸1张' }, { id: 'huangzhong', name: '黄忠', hp: 4, maxHp: 4, skill: '神射', sdesc: '攻击范围+1' }, { id: 'machao', name: '马超', hp: 4, maxHp: 4, skill: '骑袭', sdesc: '移动+1，免疫陷阱伤害' }, { id: 'weiyan', name: '魏延', hp: 4, maxHp: 4, skill: '狂战', sdesc: '体力≤一半时杀伤害+1且移动+1' }, { id: 'pangtong', name: '庞统', hp: 3, maxHp: 3, skill: '连环', sdesc: '火攻溅射目标相邻所有敌人1点' }, { id: 'jiangwei', name: '姜维', hp: 4, maxHp: 4, skill: '继志', sdesc: '击杀后可额外移动1步' }],
+			wei: [{ id: 'caocao', name: '曹操', hp: 4, maxHp: 4, skill: '奸雄', sdesc: '击杀敌方后摸2张牌' }, { id: 'zhangliao', name: '张辽', hp: 4, maxHp: 4, skill: '突袭', sdesc: '第一回合移动+2' }, { id: 'xuchu', name: '许褚', hp: 6, maxHp: 6, skill: '裸衣', sdesc: '受到杀伤害-1(最少1)，火伤不减' }, { id: 'simayi', name: '司马懿', hp: 3, maxHp: 3, skill: '鬼才', sdesc: '受伤时50%转移给相邻己方' }, { id: 'xiahoudun', name: '夏侯惇', hp: 5, maxHp: 5, skill: '拔矢', sdesc: '受伤时50%反弹1点给攻击者' }, { id: 'xuhuang', name: '徐晃', hp: 4, maxHp: 4, skill: '断斧', sdesc: '杀命中后目标下回合移动-1' }, { id: 'zhanghe', name: '张郃', hp: 4, maxHp: 4, skill: '巧变', sdesc: '每回合免疫首次受到的伤害' }, { id: 'dianwei', name: '典韦', hp: 6, maxHp: 6, skill: '恶来', sdesc: '体力≤一半时杀伤害+2' }, { id: 'guojia', name: '郭嘉', hp: 2, maxHp: 2, skill: '天妒', sdesc: '摸牌阶段额外摸2张' }, { id: 'xiahoyuan', name: '夏侯渊', hp: 4, maxHp: 4, skill: '急袭', sdesc: '攻击范围+1，移动后仍可攻击' }],
+			wu: [{ id: 'sunquan', name: '孙权', hp: 4, maxHp: 4, skill: '制衡', sdesc: '每回合可弃1张手牌额外摸2张' }, { id: 'zhouyu', name: '周瑜', hp: 3, maxHp: 3, skill: '火神', sdesc: '火伤+1，火攻可波及相邻敌人' }, { id: 'ganning', name: '甘宁', hp: 4, maxHp: 4, skill: '百骑', sdesc: '移动+2，但杀伤害固定为1' }, { id: 'lumeng', name: '吕蒙', hp: 4, maxHp: 4, skill: '白衣', sdesc: '免疫陷阱及一切地形效果' }, { id: 'luxun', name: '陆逊', hp: 3, maxHp: 3, skill: '连营', sdesc: '火攻命中后可再移动1步' }, { id: 'taishici', name: '太史慈', hp: 4, maxHp: 4, skill: '烈射', sdesc: '攻击范围+2，但杀伤害-1(最少1)' }, { id: 'sunshangxiang', name: '孙尚香', hp: 4, maxHp: 4, skill: '枭姬', sdesc: '有武器时杀+1，有防具时受伤-1' }, { id: 'huanggai', name: '黄盖', hp: 4, maxHp: 4, skill: '苦肉', sdesc: '主动损1血，本次杀伤害+2' }, { id: 'dingfeng', name: '丁奉', hp: 4, maxHp: 4, skill: '雪战', sdesc: '出闪后可再摸1张' }, { id: 'zhugeke', name: '诸葛恪', hp: 3, maxHp: 3, skill: '傲才', sdesc: '火攻伤害+2，但火攻后自损1血' }],
+			qun: [{ id: 'lvbu', name: '吕布', hp: 5, maxHp: 5, skill: '无双', sdesc: '杀伤害+1' }, { id: 'diaochan', name: '貂蝉', hp: 3, maxHp: 3, skill: '离间', sdesc: '攻击30%令目标跳过下回合' }, { id: 'dongzhuo', name: '董卓', hp: 7, maxHp: 7, skill: '暴虐', sdesc: '受伤30%反弹1点' }, { id: 'huaxiong', name: '华雄', hp: 4, maxHp: 4, skill: '骁将', sdesc: '击杀后回复1点体力' }, { id: 'yanliang', name: '颜良', hp: 4, maxHp: 4, skill: '猛将', sdesc: '连续攻击同目标第2次伤害+1' }, { id: 'wenchou', name: '文丑', hp: 4, maxHp: 4, skill: '突骑', sdesc: '移动+1，移动后首次攻击伤害+1' }, { id: 'gaoshun', name: '高顺', hp: 4, maxHp: 4, skill: '陷阵', sdesc: '攻击无视目标防具效果' }, { id: 'chengong', name: '陈宫', hp: 3, maxHp: 3, skill: '奇谋', sdesc: '每回合可将1张杀当火攻使用' }, { id: 'zhangren', name: '张任', hp: 4, maxHp: 4, skill: '忠勇', sdesc: '己方有武将阵亡的回合杀伤害+2' }, { id: 'jiling', name: '纪灵', hp: 5, maxHp: 5, skill: '三尖', sdesc: '杀穿透：命中后对后方1格敌人造成1点' }],
+			jin: [{ id: 'simazhao', name: '司马昭', hp: 4, maxHp: 4, skill: '野心', sdesc: '击杀后摸1张且可再移动1步' }, { id: 'duyu', name: '杜预', hp: 4, maxHp: 4, skill: '武库', sdesc: '装备武器时获得1次免费攻击' }, { id: 'yanghu', name: '羊祜', hp: 4, maxHp: 4, skill: '怀柔', sdesc: '回合开始全军回1血，自己本回合不可攻击' }, { id: 'wangjun', name: '王濬', hp: 4, maxHp: 4, skill: '楼船', sdesc: '移动+1，免疫陷阱伤害' }, { id: 'zhanghua', name: '张华', hp: 3, maxHp: 3, skill: '博物', sdesc: '摸牌+1' }, { id: 'wenyang', name: '文鸯', hp: 5, maxHp: 5, skill: '勇烈', sdesc: '体力高于目标时伤害+1且移动+1' }, { id: 'zhouchu', name: '周处', hp: 5, maxHp: 5, skill: '除害', sdesc: '每回合可出2张杀，第2张伤害+1' }, { id: 'liuyuan', name: '刘渊', hp: 4, maxHp: 4, skill: '潜龙', sdesc: '体力≤一半时首次攻击必中(无视闪)' }, { id: 'wanghun', name: '王浑', hp: 4, maxHp: 4, skill: '稳进', sdesc: '未移动的回合受伤-1(最少1)' }, { id: 'tangbin', name: '唐彬', hp: 4, maxHp: 4, skill: '先锋', sdesc: '己方首个行动的武将杀伤害+1' }],
+			chu: [{ id: 'xiangyu', name: '项羽', hp: 6, maxHp: 6, skill: '霸王', sdesc: '杀伤害+1，命中后目标退后1格' }, { id: 'fanzen', name: '范增', hp: 3, maxHp: 3, skill: '奇策', sdesc: '摸牌+1' }, { id: 'longju', name: '龙且', hp: 5, maxHp: 5, skill: '骁骑', sdesc: '移动+1，移动后杀伤害+1' }, { id: 'yingbu', name: '英布', hp: 5, maxHp: 5, skill: '叛勇', sdesc: '体力≤一半时伤害+2，但受伤+1' }, { id: 'jibu', name: '季布', hp: 4, maxHp: 4, skill: '守信', sdesc: '受伤-1(最少1)' }, { id: 'zhonglimei', name: '钟离昧', hp: 4, maxHp: 4, skill: '铁壁', sdesc: '体力≤一半时每回合免疫首次杀' }, { id: 'huanchu', name: '桓楚', hp: 4, maxHp: 4, skill: '先登', sdesc: '每回合首次攻击伤害+1' }, { id: 'yuziqi', name: '虞子期', hp: 4, maxHp: 4, skill: '铸兵', sdesc: '范围+1，有武器时额外伤害+1' }, { id: 'xiangzhuang', name: '项庄', hp: 5, maxHp: 5, skill: '舞剑', sdesc: '移动后仍可攻击，杀伤害+1' }, { id: 'yuji', name: '虞姬', hp: 3, maxHp: 3, skill: '绝舞', sdesc: '火攻伤害+1，命中后回复自身1血' }],
+			yan: [{ id: 'gongsunzan', name: '公孙瓒', hp: 5, maxHp: 5, skill: '白马', sdesc: '移动+2，但攻击范围固定为1' }, { id: 'yanshan', name: '严纲', hp: 4, maxHp: 4, skill: '冲阵', sdesc: '杀命中后可立即再移动1步' }, { id: 'tiankai', name: '田楷', hp: 4, maxHp: 4, skill: '守土', sdesc: '受伤-1(最少1)，移动力固定为1' }, { id: 'danjing', name: '单经', hp: 4, maxHp: 4, skill: '游击', sdesc: '移动+1' }, { id: 'liuyu', name: '刘虞', hp: 4, maxHp: 4, skill: '仁政', sdesc: '回合开始为最低血队友回1血' }, { id: 'gongsunxu', name: '公孙续', hp: 4, maxHp: 4, skill: '承志', sdesc: '己方武将阵亡时本回合移动+1杀+1' }, { id: 'gongsunfan', name: '公孙范', hp: 4, maxHp: 4, skill: '奔袭', sdesc: '每移动2步杀伤害+1(最多+2)' }, { id: 'yanrou', name: '阎柔', hp: 4, maxHp: 4, skill: '乌桓', sdesc: '移动+1且攻击范围+1' }, { id: 'xianyufu', name: '鲜于辅', hp: 4, maxHp: 4, skill: '忠义', sdesc: '体力≤一半时伤害+1且受伤-1' }, { id: 'liutai', name: '刘泰', hp: 4, maxHp: 4, skill: '坚守', sdesc: '连续2回合未移动，第3回合起受伤-2' }],
+			liang: [{ id: 'yuanshu', name: '袁术', hp: 4, maxHp: 4, skill: '僭越', sdesc: '摸牌+1，可同时装备2件武器' }, { id: 'jiling2', name: '纪灵·烈', hp: 5, maxHp: 5, skill: '三尖刀', sdesc: '杀范围+1' }, { id: 'zhangxun', name: '张勋', hp: 4, maxHp: 4, skill: '守城', sdesc: '受伤-1(最少1)，免疫陷阱伤害' }, { id: 'qiaorui', name: '桥蕤', hp: 4, maxHp: 4, skill: '破阵', sdesc: '杀命中有防具目标时破坏其防具' }, { id: 'leibo', name: '雷薄', hp: 4, maxHp: 4, skill: '游骑', sdesc: '移动后仍可攻击' }, { id: 'chenlan', name: '陈兰', hp: 4, maxHp: 4, skill: '奔袭梁', sdesc: '移动+1，移动后首次攻击无视闪' }, { id: 'hansong', name: '韩暹', hp: 4, maxHp: 4, skill: '白波', sdesc: '移动+1，受到火属性伤害-1' }, { id: 'yangfeng', name: '杨奉', hp: 4, maxHp: 4, skill: '护驾', sdesc: '相邻己方受伤时可代替承受(伤害-1)' }, { id: 'liuxun', name: '刘勋', hp: 4, maxHp: 4, skill: '固守', sdesc: '未移动受伤-1' }, { id: 'chenji', name: '陈纪', hp: 3, maxHp: 3, skill: '谋略', sdesc: '摸牌+1，火攻伤害+1' }],
+			nan: [{ id: 'menghuo', name: '孟获', hp: 7, maxHp: 7, skill: '蛮王', sdesc: '受伤-1(最少1)' }, { id: 'zhurong', name: '祝融', hp: 4, maxHp: 4, skill: '飞刀', sdesc: '范围+1，杀命中30%令目标弃1张牌' }, { id: 'wutugu', name: '兀突骨', hp: 6, maxHp: 6, skill: '藤甲兵', sdesc: '免疫普通杀，但火杀伤害+2' }, { id: 'jinhuansanjie', name: '金环三结', hp: 5, maxHp: 5, skill: '蛮勇', sdesc: '杀伤害+1，击杀后摸1张牌' }, { id: 'dongtuna', name: '董荼那', hp: 5, maxHp: 5, skill: '蛮力', sdesc: '杀伤害+1，移动不受陷阱影响' }, { id: 'ahuitan', name: '阿会喃', hp: 5, maxHp: 5, skill: '蛮战', sdesc: '体力≤一半时伤害+1且免疫陷阱' }, { id: 'duosi', name: '朵思大王', hp: 3, maxHp: 3, skill: '毒泉', sdesc: '攻击30%令目标下回合摸牌-1' }, { id: 'mangyachang', name: '忙牙长', hp: 5, maxHp: 5, skill: '蛮骑', sdesc: '移动+1，经过陷阱时破坏不受伤' }, { id: 'dailai', name: '带来洞主', hp: 4, maxHp: 4, skill: '蛮术', sdesc: '摸牌+1' }, { id: 'jinhuan', name: '金环大王', hp: 4, maxHp: 4, skill: '蛮阵', sdesc: '火攻伤害+1' }],
+			bei: [{ id: 'tuoba', name: '拓跋珪', hp: 5, maxHp: 5, skill: '铁骑', sdesc: '移动+1，移动后攻击无视目标防具' }, { id: 'muyong', name: '慕容垂', hp: 5, maxHp: 5, skill: '燕归', sdesc: '移动后仍可攻击，击杀后可再移动' }, { id: 'fujian', name: '苻坚', hp: 6, maxHp: 6, skill: '投鞭', sdesc: '所有攻击伤害+1' }, { id: 'wangmeng', name: '王猛', hp: 3, maxHp: 3, skill: '经纬', sdesc: '摸牌+1' }, { id: 'dengqiang', name: '邓羌', hp: 5, maxHp: 5, skill: '万人敌', sdesc: '杀伤害+1，命中后目标弃1张手牌' }, { id: 'zhanggun', name: '张衮', hp: 4, maxHp: 4, skill: '谋主', sdesc: '火攻伤害+1' }, { id: 'yidu', name: '宜都', hp: 4, maxHp: 4, skill: '守边', sdesc: '受伤-1，相邻己方武将受伤也-1' }, { id: 'helan', name: '贺兰', hp: 4, maxHp: 4, skill: '奔雷', sdesc: '移动+2，但杀伤害固定为1' }, { id: 'kumoxi', name: '库莫奚', hp: 4, maxHp: 4, skill: '猎骑', sdesc: '移动+1，每移动1步杀伤害+1(最多+2)' }, { id: 'yuchi', name: '尉迟', hp: 5, maxHp: 5, skill: '铁盾', sdesc: '体力≤一半时受伤-1，被击杀时攻击者也受1点' }]
+		};
+
+		/* ==================== 网络 ==================== */
+		const socket = io();
+		const NET = { isHost: false, roomId: '', myId: '', myName: '', players: [], hostId: '', myFaction: null };
+		let PHASE = 'lobby';
+		socket.on('connect', () => { NET.myId = socket.id; setStatus('已连接 房间:' + NET.roomId); });
+		socket.on('disconnect', () => setStatus('已断开'));
+		socket.on('playerList', l => { NET.players = l; renderWait(); });
+		socket.on('newHost', id => { NET.hostId = id; if (id === NET.myId) { NET.isHost = true; showMsg('你成为了房主'); renderWait(); } });
+		socket.on('playerLeft', id => { showMsg('有玩家离开'); if (NET.isHost) hostPlayerLeft(id); });
+		socket.on('fromHost', d => handleHostMsg(d));
+		socket.on('fromClient', d => { if (NET.isHost) handleClientMsg(d); });
+		function setStatus(t) { document.getElementById('net-status').innerText = t; }
+		function sendTo(pid, data) { if (pid === NET.myId) handleHostMsg(data); else socket.emit('toPlayer', { target: pid, data }); }
+		function bMsg(m) { showMsg(m); socket.emit('toAll', { type: 'showMsg', msg: m }); }
+		function showMsg(t) { const m = document.getElementById('msg-box'); m.innerText = t; m.style.opacity = 1; clearTimeout(m._t); m._t = setTimeout(() => m.style.opacity = 0, 1800); }
+		function nameOf(id) { const p = (setupData.players || NET.players || []).find(x => x.id === id); return p ? p.name : '玩家'; }
+
+		function netCreate() {
+			NET.myName = document.getElementById('inp-name').value.trim() || '无名';
+			socket.emit('createRoom', { name: NET.myName }, r => {
+				if (r.ok) { NET.isHost = true; NET.roomId = r.roomId; NET.hostId = NET.myId; NET.players = [{ id: NET.myId, name: NET.myName }]; showWait(); setStatus('已连接 房间:' + NET.roomId); }
+			});
+		}
+		function toggleJoin() { document.getElementById('join-box').classList.toggle('hidden'); }
+		function netJoin() {
+			NET.myName = document.getElementById('inp-name').value.trim() || '无名';
+			const rid = document.getElementById('inp-room').value.trim().toUpperCase();
+			socket.emit('joinRoom', { roomId: rid, name: NET.myName }, r => {
+				if (!r.ok) { alert(r.err); return; }
+				NET.roomId = rid; NET.isHost = false; NET.players = r.players; NET.hostId = r.players[0].id; showWait(); setStatus('已连接 房间:' + NET.roomId);
+			});
+		}
+		function showWait() {
+			document.getElementById('lobby-screen').classList.add('hidden');
+			document.getElementById('wait-screen').classList.remove('hidden');
+			document.getElementById('room-code').innerText = NET.roomId; renderWait();
+		}
+		function renderWait() {
+			const list = document.getElementById('player-list'); list.innerHTML = '';
+			NET.players.forEach(p => { const d = document.createElement('div'); d.innerText = p.name; if (p.id === NET.hostId) d.className = 'host'; list.appendChild(d); });
+			document.getElementById('host-config').classList.toggle('hidden', !NET.isHost);
+			document.getElementById('wait-text').classList.toggle('hidden', NET.isHost);
+		}
+
+		/* ==================== 状态 ==================== */
+		let MAP = 8, HEX = 40;
+		const game = {
+			controllers: {}, units: [], terrain: {}, hands: {}, handCounts: {}, turnIdx: 0, turnCount: 0, over: false, cid: 1, lastElem: null,
+			activeFactions: [], factionTeamMap: {},
+			get curFaction() { return this.activeFactions[this.turnIdx]; },
+			isHuman(f) { return !!this.controllers[f]; },
+			alive(f) { return this.units.filter(u => u.team === f && u.hp > 0); },
+			allAlive() { return this.units.filter(u => u.hp > 0); },
+			unitAt(x, y) { return this.units.find(u => u.x === x && u.y === y && u.hp > 0); },
+			teamOf(f) { return this.factionTeamMap[f] || 'S'; },
+			sameTeam(a, b) { const t1 = this.teamOf(a), t2 = this.teamOf(b); if (t1 === 'S' || t2 === 'S') return false; return t1 === t2; },
+			atkRange(u) { if (u.skill === '白马') return 1; let r = (u.weapon && u.weapon.range) ? u.weapon.range : 1; if (['神射', '烈射', '飞刀', '铸兵', '三尖刀', '乌桓', '急袭'].includes(u.skill)) r++; return r; },
+			moveSteps(u) { let s = 1; if (u.skill === '守土') return 1; if (['龙胆', '骑袭', '突骑', '骁骑', '游击', '乌桓', '蛮骑', '铁骑', '楼船', '舞剑', '燕归', '游骑'].includes(u.skill)) s++; if (['百骑', '白马', '奔雷'].includes(u.skill)) s += 2; if (u.skill === '狂战' && u.hp <= u.maxHp / 2) s++; if (u.skill === '勇烈') s++; return s; },
+			canKillAgain(u) { return ['咆哮', '除害'].includes(u.skill); }
+		};
+		let myHand = [], sel = { unit: null, card: null };
+		let pendingResponse = null;
+		let aiQueue = [], aiStep = 0, aiCont = null;
+		let setupData = { aiCount: 2, teamCount: 2, players: [], teams: {}, factions: {}, factionTeam: {}, generals: {}, taken: [] };
+		let pickOrder = [], pickIdx = 0, myTeam = 'S';
+		let pick = { faction: null, generals: [] };
+
+		/* ==================== 工具 ==================== */
+		function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+		function calcMapSize(n) { if (n <= 3) { MAP = 10; HEX = 38 } else if (n <= 5) { MAP = 12; HEX = 35 } else if (n <= 7) { MAP = 14; HEX = 32 } else { MAP = 16; HEX = 30 } }
+		function cube(x, y) { const q = x - (y - (y & 1)) / 2; return { q, r: y, s: -q - y } }
+		function hexDist(x1, y1, x2, y2) { const a = cube(x1, y1), b = cube(x2, y2); return Math.max(Math.abs(a.q - b.q), Math.abs(a.r - b.r), Math.abs(a.s - b.s)) }
+		function hexNeighbors(x, y) { const even = [[1, 0], [0, -1], [-1, -1], [-1, 0], [-1, 1], [0, 1]], odd = [[1, 0], [1, -1], [0, -1], [-1, 0], [0, 1], [1, 1]]; const dirs = (y & 1) ? odd : even, res = []; for (const [dx, dy] of dirs) { const nx = x + dx, ny = y + dy; if (nx >= 0 && nx < MAP && ny >= 0 && ny < MAP) res.push({ x: nx, y: ny }) } return res }
+		function generateStartPositions(fs) { const pos = {}, n = fs.length, cx = MAP / 2 - .5, cy = MAP / 2 - .5, r = Math.max(2, Math.floor(MAP / 2) - 1); fs.forEach((f, i) => { const a = (2 * Math.PI * i / n) - Math.PI / 2; const bx = clamp(Math.round(cx + r * Math.cos(a)), 0, MAP - 1), by = clamp(Math.round(cy + r * Math.sin(a)), 0, MAP - 1); const spots = [[bx, by]]; for (const nb of hexNeighbors(bx, by)) { if (spots.length >= 3) break; if (!spots.some(s => s[0] === nb.x && s[1] === nb.y)) spots.push([nb.x, nb.y]) } while (spots.length < 3) spots.push([bx, by]); pos[f] = spots.slice(0, 3) }); return pos }
+		function drawOne() { const t = WEIGHTED_POOL[Math.floor(Math.random() * WEIGHTED_POOL.length)]; return { ...t, id: game.cid++ } }
+		function draw(f, n) { if (!game.hands[f]) game.hands[f] = []; for (let i = 0; i < n; i++)game.hands[f].push(drawOne()); game.handCounts[f] = game.hands[f].length; }
+		function consume(f, card) { game.hands[f] = (game.hands[f] || []).filter(c => c.id !== card.id); game.handCounts[f] = game.hands[f].length; }
+
+		/* ==================== Host：开始/组队 ==================== */
+		function hostStart() {
+			setupData.aiCount = clamp(parseInt(document.getElementById('inp-ai').value) || 0, 0, 9);
+			setupData.teamCount = parseInt(document.getElementById('inp-teams').value) || 2;
+			setupData.players = NET.players.map(p => ({ id: p.id, name: p.name }));
+			setupData.teams = {}; setupData.factions = {}; setupData.factionTeam = {}; setupData.generals = {}; setupData.taken = [];
+			PHASE = 'team'; socket.emit('setPhase', 'setup');
+			const payload = { aiCount: setupData.aiCount, teamCount: setupData.teamCount, players: setupData.players };
+			socket.emit('toAll', { type: 'startSetup', setup: payload });
+			enterTeamPhase(payload);
+		}
+		function enterTeamPhase(setup) {
+			document.getElementById('wait-screen').classList.add('hidden');
+			document.getElementById('team-screen').classList.remove('hidden');
+			document.getElementById('btn-team').classList.remove('hidden');
+			document.getElementById('team-wait').classList.add('hidden');
+			document.getElementById('team-sub').innerText = `${setup.players.length}人 / ${setup.teamCount}队 / ${setup.aiCount}个AI`;
+			const keys = ['A', 'B', 'C', 'D'].slice(0, setup.teamCount);
+			const list = document.getElementById('team-list'); list.innerHTML = '';
+			const row = document.createElement('div'); row.className = 'team-row';
+			let h = `<span class="pname" style="color:#ffd700">${NET.myName}</span>`;
+			keys.forEach(k => h += `<button class="team-btn" data-t="${k}">${TEAM_NAME[k]}</button>`);
+			h += `<button class="team-btn" data-t="S">单干</button>`; row.innerHTML = h; list.appendChild(row);
+			document.querySelectorAll('.team-btn').forEach(b => {
+				if (b.dataset.t === 'S') b.classList.add('active-S');
+				b.onclick = () => { document.querySelectorAll('.team-btn').forEach(x => x.className = 'team-btn'); b.classList.add('active-' + b.dataset.t); myTeam = b.dataset.t; };
+			});
+		}
+		function confirmTeam() {
+			document.getElementById('btn-team').classList.add('hidden');
+			document.getElementById('team-wait').classList.remove('hidden');
+			if (NET.isHost) { setupData.teams[NET.myId] = myTeam; afterTeam(); }
+			else socket.emit('toHost', { type: 'teamChoice', team: myTeam });
+		}
+		function afterTeam() {
+			if (PHASE !== 'team') return;
+			if (setupData.players.every(p => setupData.teams[p.id] !== undefined)) {
+				PHASE = 'pick';
+				pickOrder = setupData.players.map(p => p.id);
+				pickIdx = 0;
+				socket.emit('toAll', { type: 'startPick' });
+				enterPickPhase();
+			}
+		}
+
+		/* ==================== 选将（只有房主推进 pickIdx） ==================== */
+		function enterPickPhase() {
+			document.getElementById('team-screen').classList.add('hidden');
+			document.getElementById('pick-screen').classList.remove('hidden');
+			if (NET.isHost) { pickIdx = 0; advancePick(); }
+			else showPickWaiting('等待房主安排选将顺序…');
+		}
+		function advancePick() {
+			while (pickIdx < pickOrder.length && setupData.factions[pickOrder[pickIdx]]) pickIdx++;
+			if (pickIdx >= pickOrder.length) { startBattleAll(); return; }
+			const cur = pickOrder[pickIdx];
+			if (cur === NET.myId) { showMyPick(); }
+			else {
+				sendTo(cur, { type: 'yourTurnPick' });
+				bMsg(`⏳ 等待 ${nameOf(cur)} 选将…`);
+				showPickWaiting(`等待 ${nameOf(cur)} 选将…`);
+			}
+		}
+		function showPickWaiting(t) {
+			document.getElementById('faction-row').innerHTML = '';
+			document.getElementById('general-grid').innerHTML = '';
+			document.getElementById('pick-status').innerText = '';
+			document.getElementById('confirm-pick').style.display = 'none';
+			const w = document.getElementById('pick-wait'); w.innerText = t; w.classList.remove('hidden');
+		}
+		function showMyPick() {
+			pick = { faction: null, generals: [] };
+			document.getElementById('pick-wait').classList.add('hidden');
+			document.getElementById('pick-title').innerText = `${NET.myName} 选将`;
+			document.getElementById('pick-sub').innerText = '选择势力';
+			renderFactionRow();
+			document.getElementById('general-grid').innerHTML = '';
+			document.getElementById('pick-status').innerText = '';
+			document.getElementById('confirm-pick').style.display = 'none';
+		}
+		function renderFactionRow() {
+			const row = document.getElementById('faction-row'); row.innerHTML = '';
+			FORDER.forEach(f => {
+				const taken = setupData.taken.includes(f);
+				const d = document.createElement('div');
+				d.className = `faction-pick ${taken ? 'taken' : ''} ${pick.faction === f ? 'chosen' : ''}`;
+				d.style.background = FCOLOR[f] + '44';
+				d.innerHTML = `${FNAME[f]}<div style="font-size:11px;color:#ccc">${taken ? '已选' : '可选'}</div>`;
+				d.onclick = () => { if (taken) return; pick.faction = f; renderFactionRow(); renderGeneralGrid(); };
+				row.appendChild(d);
+			});
+		}
+		function renderGeneralGrid() {
+			const grid = document.getElementById('general-grid'); grid.innerHTML = '';
+			document.getElementById('pick-sub').innerText = `从${FNAME[pick.faction]}选${PICK_COUNT}名武将`;
+			GENERAL_POOL[pick.faction].forEach(g => {
+				const p = pick.generals.includes(g.id); const d = document.createElement('div');
+				d.className = `general-card ${p ? 'picked' : ''}`;
+				d.innerHTML = `<div class="gname">${g.name}</div><div class="ghp">❤️${g.hp}/${g.maxHp}</div><div class="gskill">【${g.skill}】</div><div class="gdesc">${g.sdesc}</div>`;
+				d.onclick = () => {
+					if (p) {
+						// 取消已选：仅当该武将属于当前选中势力时才允许取消
+						pick.generals = pick.generals.filter(x => x !== g.id);
+					} else {
+						// ★ 修复核心：检查已选武将是否全部来自当前势力
+						if (pick.generals.length > 0) {
+							const curPoolIds = GENERAL_POOL[pick.faction].map(v => v.id);
+							const hasOtherFaction = pick.generals.some(id => !curPoolIds.includes(id));
+							if (hasOtherFaction) {
+								document.getElementById('pick-status').innerText = '⚠️ 只能选择同一势力的武将！请先清空其他势力武将';
+								return;
+							}
+						}
+						if (pick.generals.length >= PICK_COUNT) {
+							document.getElementById('pick-status').innerText = `最多${PICK_COUNT}名！`;
+							return;
+						}
+						pick.generals.push(g.id);
+					}
+					renderGeneralGrid(); updatePickStatus();
+				};
+				grid.appendChild(d);
+			});
+			updatePickStatus();
+		}
+		function updatePickStatus() {
+			const n = pick.generals.length;
+			document.getElementById('pick-status').innerText = `已选 ${n}/${PICK_COUNT}`;
+			document.getElementById('confirm-pick').style.display = (n === PICK_COUNT) ? 'block' : 'none';
+		}
+		function confirmPick() {
+			setupData.taken.push(pick.faction);
+			setupData.factions[NET.myId] = pick.faction;
+			setupData.factionTeam[pick.faction] = setupData.teams[NET.myId] || 'S';
+			setupData.generals[NET.myId] = [...pick.generals];
+			NET.myFaction = pick.faction;
+			if (NET.isHost) { pickIdx++; advancePick(); }
+			else {
+				socket.emit('toHost', { type: 'pickDone', faction: pick.faction, generals: pick.generals });
+				showPickWaiting('✅ 选将完成，等待其他玩家…');
+			}
+		}
+
+		/* ==================== 消息分发 ==================== */
+		function handleHostMsg(d) {
+			switch (d.type) {
+				case 'startSetup': enterTeamPhase(d.setup); break;
+				case 'startPick': enterPickPhase(); break;
+				case 'yourTurnPick': showMyPick(); break;
+				case 'startBattle': initBattle(d.data); break;
+				case 'stateSync': applyState(d.state); break;
+				case 'yourTurn': onMyTurn(d); break;
+				case 'handUpdate': myHand = d.cards || []; renderHand(); break;
+				case 'needResponse': showResponsePrompt(d); break;
+				case 'showMsg': showMsg(d.msg); break;
+				case 'gameOver': showGameOver(d); break;
+			}
+		}
+		function handleClientMsg(d) {
+			switch (d.type) {
+				case 'teamChoice': setupData.teams[d.from] = d.team; afterTeam(); break;
+				case 'pickDone':
+					setupData.factions[d.from] = d.faction;
+					setupData.factionTeam[d.faction] = setupData.teams[d.from] || 'S';
+					setupData.generals[d.from] = d.generals;
+					if (!setupData.taken.includes(d.faction)) setupData.taken.push(d.faction);
+					pickIdx++; advancePick(); break;
+				case 'action': handleAction(d.from, d.action); break;
+				case 'endTurn':
+					if (pendingResponse) {
+						sendTo(d.from, { type: 'showMsg', msg: '⏳ 等待对方响应中…' });   // ★ 新增：告诉客户端为什么被拒
+						return;
+					}
+					if (!game.over && game.controllers[game.curFaction] === d.from) doEndTurn();
+					break;
+				case 'response': resolveResponse(d.use, d.cardIdx); break;
+			}
+		}
+		function hostPlayerLeft(id) {
+			if (PHASE === 'team') { if (setupData.teams[id] === undefined) { setupData.teams[id] = 'S'; afterTeam(); } }
+			else if (PHASE === 'pick') {
+				const i = pickOrder.indexOf(id);
+				if (i >= 0 && !setupData.factions[id]) { pickOrder.splice(i, 1); if (pickIdx > i) pickIdx--; advancePick(); }
+			}
+			else if (PHASE === 'battle') {
+				if (pendingResponse && pendingResponse.targetPlayer === id) { const r = pendingResponse; pendingResponse = null; r.resume(false, 0); }
+				let changed = false;
+				game.activeFactions.forEach(f => { if (game.controllers[f] === id) { game.controllers[f] = null; changed = true; bMsg(`🤖 ${FNAME[f]} 由AI接管`); } });
+				if (changed) { broadcast(); if (!game.isHuman(game.curFaction) && !game.over) { aiTurnHost(game.curFaction); } }
+			}
+		}
+
+		/* ==================== 开战 ==================== */
+		function startBattleAll() {
+			PHASE = 'battle'; socket.emit('setPhase', 'battle');
+			const data = buildBattle();
+			socket.emit('toAll', { type: 'startBattle', data });
+			initBattle(data);
+		}
+		function buildBattle() {
+			const pf = Object.values(setupData.factions);
+			const rem = FORDER.filter(f => !pf.includes(f)).sort(() => Math.random() - .5);
+			const active = [...pf, ...rem.slice(0, setupData.aiCount)];
+			calcMapSize(active.length);
+			const pos = generateStartPositions(active);
+			const ftm = {}; active.forEach(f => ftm[f] = setupData.factionTeam[f] || 'S');
+			const controllers = {}; active.forEach(f => { const o = Object.keys(setupData.factions).find(k => setupData.factions[k] === f); controllers[f] = o || null; });
+			const units = [], eqPool = CARDS.filter(c => c.elem === 'equip');
+			active.forEach(f => {
+				const owner = Object.keys(setupData.factions).find(k => setupData.factions[k] === f);
+				const ids = owner ? setupData.generals[owner] : [...GENERAL_POOL[f]].sort(() => Math.random() - .5).slice(0, PICK_COUNT).map(g => g.id);
+				(ids || []).forEach((gid, i) => {
+					const base = GENERAL_POOL[f].find(g => g.id === gid); if (!base) return;
+					const sp = pos[f][i] || pos[f][0];
+					const u = { ...base, team: f, x: sp[0], y: sp[1], weapon: null, armor: null, moved: false, attacked: false, skipped: false, killCount: 0, _firstAttackDone: false, _movedSteps: 0, _noAttack: false, _firstHitBlocked: false };
+					if (Math.random() < .35) { const e = { ...eqPool[Math.floor(Math.random() * eqPool.length)] }; if (e.type === 'weapon') u.weapon = e; else u.armor = e; }
+					units.push(u);
+				});
+			});
+			return { units, active, ftm, controllers, MAP, HEX };
+		}
+		function initBattle(d) {
+			document.getElementById('pick-screen').classList.add('hidden');
+			MAP = d.MAP; HEX = d.HEX;
+			game.units = d.units; game.activeFactions = d.active; game.factionTeamMap = d.ftm;
+			game.controllers = d.controllers; game.terrain = {}; game.turnIdx = 0; game.turnCount = 0; game.over = false;
+			game.hands = {}; game.handCounts = {};
+			game.activeFactions.forEach(f => draw(f, 4));
+			document.getElementById('ui-top').classList.remove('hidden');
+			document.getElementById('equip-panel').classList.remove('hidden');
+			document.getElementById('end-turn-btn').classList.remove('hidden');
+			buildBadges(); resize(); renderAll();
+			if (NET.isHost) startTurnHost();
+		}
+
+		/* ==================== Host：回合 ==================== */
+		function startTurnHost() {
+			if (game.over) return;
+			const f = game.curFaction; game.turnCount++;
+			game.alive(f).forEach(u => { u.moved = false; u.attacked = false; u.killCount = 0; u._firstAttackDone = false; u._movedSteps = 0; u._noAttack = false; u._firstHitBlocked = false; u.skipped = false; });
+			const healer = game.alive(f).find(u => u.skill === '仁德');
+			if (healer) { const al = game.alive(f).filter(u => u !== healer && u.hp < u.maxHp); if (al.length) { al.sort((a, b) => a.hp - b.hp); al[0].hp = Math.min(al[0].maxHp, al[0].hp + 1); bMsg(`💚 刘备【仁德】回复${al[0].name}`); } }
+			const hr = game.alive(f).find(u => u.skill === '怀柔');
+			if (hr) { game.alive(f).forEach(u => { if (u.hp < u.maxHp) u.hp++ }); hr._noAttack = true; bMsg(`💚 羊祜【怀柔】全军回复`); }
+			const rz = game.alive(f).find(u => u.skill === '仁政');
+			if (rz) { const al = game.alive(f).filter(u => u !== rz && u.hp < u.maxHp); if (al.length) { al.sort((a, b) => a.hp - b.hp); al[0].hp++; bMsg(`💚 刘虞【仁政】`); } }
+			let n = 2;
+			if (game.alive(f).some(u => ['智谋', '天妒', '博物', '僭越', '谋略', '蛮术', '经纬', '奇策'].includes(u.skill))) n++;
+			if (game.alive(f).some(u => u.skill === '天妒')) n++;
+			draw(f, n);
+			if (game.isHuman(f)) {
+				const pid = game.controllers[f];
+				bMsg(`🎴 ${FNAME[f]}（${nameOf(pid)}）的回合`);
+				socket.emit('toAll', { type: 'stateSync', state: pubState() });
+				sendTo(pid, { type: 'yourTurn', faction: f, hand: game.hands[f], state: pubState() });
+			} else {
+				bMsg(`⏳ ${FNAME[f]}（AI）行动中…`);
+				socket.emit('toAll', { type: 'stateSync', state: pubState() });
+				setTimeout(() => aiTurnHost(f), 700);
+			}
+		}
+		function pubState() {
+			return {
+				units: game.units, terrain: game.terrain, turnIdx: game.turnIdx, turnCount: game.turnCount,
+				activeFactions: game.activeFactions, factionTeamMap: game.factionTeamMap, controllers: game.controllers,
+				over: game.over, lastElem: game.lastElem, handCounts: game.handCounts
+			};
+		}
+		function applyState(s) {
+			game.units = s.units; game.terrain = s.terrain; game.turnIdx = s.turnIdx; game.turnCount = s.turnCount;
+			game.activeFactions = s.activeFactions; game.factionTeamMap = s.factionTeamMap; game.controllers = s.controllers;
+			game.over = s.over; game.lastElem = s.lastElem; game.handCounts = s.handCounts;
+			sel = { unit: null, card: null };
+			renderAll();
+		}
+		function broadcast() {
+			socket.emit('toAll', { type: 'stateSync', state: pubState() });
+			game.activeFactions.forEach(f => { const pid = game.controllers[f]; if (pid) sendTo(pid, { type: 'handUpdate', cards: game.hands[f] || [] }); });
+			if (NET.myFaction && game.controllers[NET.myFaction] === NET.myId) myHand = game.hands[NET.myFaction] || [];
+			renderAll();
+		}
+		function renderAll() { render(); renderEquipPanel(); updateTop(); renderHand(); updateEndBtn(); }
+		function updateEndBtn() {
+			const btn = document.getElementById('end-turn-btn');
+			if (!btn) return;
+			const myTurn = game.curFaction === NET.myFaction && !game.over;
+			const blocked = !!pendingResponse;
+			btn.style.opacity = (myTurn && !blocked) ? '1' : '.4';
+			btn.style.pointerEvents = (myTurn && !blocked) ? 'auto' : 'none';
+			btn.innerText = blocked ? '⏳ 等待响应…' : '⚔️ 结束回合';
+		}
+		function onMyTurn(d) {
+			applyState(d.state);
+			myHand = d.hand || [];
+			document.getElementById('hand-area').classList.add('hidden');
+			document.getElementById('ov-title').innerText = `${NET.myName} 的回合`;
+			document.getElementById('ov-title').style.color = FCOLOR[d.faction];
+			document.getElementById('ov-desc').innerText = `操控：${FNAME[d.faction]}（${TEAM_NAME[game.teamOf(d.faction)]}）`;
+			document.getElementById('turn-overlay').style.display = 'flex';
+		}
+		function confirmTurnStart() {
+			document.getElementById('turn-overlay').style.display = 'none';
+			document.getElementById('hand-area').classList.remove('hidden');
+			renderHand();
+		}
+		function doEndTurn() {
+			if (pendingResponse) { showMsg('⏳ 还有响应未处理，无法结束回合'); return; }   // ★ 新增
+			if (game.over) return;
+			let next = (game.turnIdx + 1) % game.activeFactions.length, s = 0;
+			while (game.alive(game.activeFactions[next]).length === 0 && s < game.activeFactions.length) { next = (next + 1) % game.activeFactions.length; s++; }
+			game.turnIdx = next; broadcast(); startTurnHost();
+		}
+		function clickEndTurn() {
+			if (game.over) return;
+			if (game.curFaction !== NET.myFaction) { showMsg('还没轮到你'); return; }
+			if (pendingResponse) { showMsg('⏳ 等待对方响应…'); return; }   // ★ 新增
+			if (NET.isHost) doEndTurn(); else socket.emit('toHost', { type: 'endTurn' });
+		}
+
+		/* ==================== Host：操作 ==================== */
+		function sendAction(a) { if (NET.isHost) handleAction(NET.myId, a); else socket.emit('toHost', { type: 'action', action: a }); }
+		function handleAction(pid, a) {
+			if (game.over || pendingResponse) return;
+			const f = game.curFaction;
+			if (game.controllers[f] !== pid) return;
+			if (a.type === 'move') {
+				const u = game.unitAt(a.fx, a.fy);
+				if (!u || u.team !== f || u.moved) return;
+				if (game.unitAt(a.tx, a.ty)) return;
+				if (hexDist(a.fx, a.fy, a.tx, a.ty) > game.moveSteps(u)) return;
+				u.x = a.tx; u.y = a.ty; u.moved = true; u._movedSteps = hexDist(a.fx, a.fy, a.tx, a.ty);
+				if (!['骑袭', '白衣', '楼船', '守城', '蛮战', '蛮力', '蛮骑'].includes(u.skill)) checkTrap(u);
+				broadcast();
+			} else if (a.type === 'useCard') {
+				const u = game.unitAt(a.ux, a.uy);
+				const card = (game.hands[f] || []).find(c => c.id === a.cid);
+				if (!u || !card || u.team !== f) return;
+				useCardHost(card, u, { x: a.tx, y: a.ty }, game.unitAt(a.tx, a.ty), f);
+			}
+		}
+		function useCardHost(card, unit, hex, target, f) {
+			const dist = hexDist(unit.x, unit.y, hex.x, hex.y);
+			if (card.type === 'weapon' || card.type === 'armor') {
+				if (hex.x !== unit.x || hex.y !== unit.y) return;
+				if (card.type === 'weapon') { if (unit.skill === '僭越' && unit.weapon) unit.weapon2 = card; else unit.weapon = card; }
+				else unit.armor = card;
+				bMsg(`⚙️ ${unit.name}装备【${card.name}】`);
+				if (unit.skill === '武库') unit._freeAttack = true;
+				consume(f, card); broadcast(); return;
+			}
+			if (card.type === 'heal') {
+				if (hex.x !== unit.x || hex.y !== unit.y) return;
+				if (unit.hp >= unit.maxHp) return;
+				unit.hp = Math.min(unit.maxHp, unit.hp + card.amount);
+				bMsg(`🌿 ${unit.name}回1血`); consume(f, card); broadcast(); return;
+			}
+			if (card.type === 'terrain') {
+				if (game.unitAt(hex.x, hex.y)) return;
+				game.terrain[`${hex.x},${hex.y}`] = card.trap;
+				bMsg(`🪨 布置【${card.trap}】`); consume(f, card); broadcast(); return;
+			}
+			if (card.type === 'attack') {
+				if (!target || target.team === unit.team || game.sameTeam(unit.team, target.team)) return;
+				if (unit._noAttack) return;
+				if (dist > game.atkRange(unit)) return;
+				if (unit.killCount >= (game.canKillAgain(unit) ? 2 : 1)) return;
+				consume(f, card);
+				let dmg = calcAttackDmg(unit, target, card);
+				if (dmg <= 0) { broadcast(); return; }
+				let blocked = applyDefenseCheck(unit, target, card);
+				if (blocked) { bMsg('🛡️ 防具挡下攻击！'); }
+				else {
+					const r = tryShan(unit, target, dmg, card, () => { unit.killCount++; afterAttack(unit, card, target); });
+					if (r === 'paused') { broadcast(); return; }
+					if (r === 'blocked') { unit.killCount++; afterAttack(unit, card, target); broadcast(); return; }
+					dealDmg(target, dmg, unit, card);
+					if (pendingResponse) { unit.killCount++; broadcast(); return; }
+				}
+				unit.killCount++; afterAttack(unit, card, target); broadcast(); return;
+			}
+			if (card.type === 'fire_attack') {
+				if (!target || target.team === unit.team || game.sameTeam(unit.team, target.team)) return;
+				if (dist > game.atkRange(unit)) return;
+				consume(f, card);
+				let dmg = calcFireDmg(unit, target, card), blocked = false;
+				if (target.armor && !['陷阵', '铁骑'].includes(unit.skill)) {
+					if (target.armor.fireWeak) { dmg += target.skill === '藤甲兵' ? 2 : 1; bMsg('🔥藤甲弱点！'); }
+					if (target.armor.blockRate && Math.random() < target.armor.blockRate) { blocked = true; bMsg('🛡️八卦阵挡住火攻！'); }
+				}
+				if (!blocked) dmg = applyDefenseReduction(target, dmg);
+				if (!blocked) dealDmg(target, dmg, unit, card);
+				if (unit.skill === '连环' && !blocked) hexNeighbors(target.x, target.y).forEach(nb => { const t2 = game.unitAt(nb.x, nb.y); if (t2 && t2.team !== unit.team && !game.sameTeam(unit.team, t2.team) && t2.hp > 0) { t2.hp--; bMsg(`🔥【连环】溅射${t2.name}`); if (t2.hp <= 0) handleDying(t2, unit); } });
+				if (unit.skill === '连营' && !blocked) unit.moved = false;
+				if (unit.skill === '绝舞' && !blocked) unit.hp = Math.min(unit.maxHp, unit.hp + 1);
+				if (unit.skill === '傲才') { unit.hp--; if (unit.hp <= 0) handleDying(unit, null); }
+				game.lastElem = card.elem; broadcast(); return;
+			}
+		}
+		function afterAttack(unit, card, target) {
+			unit.attacked = true; unit._firstAttackDone = true; game.lastElem = card.elem;
+			if (unit.skill === '继志' && target.hp <= 0) { unit.moved = false; bMsg(`🏇 姜维【继志】可再移动`); }
+			if (unit.skill === '冲阵' && target.hp > 0) { unit.moved = false; bMsg(`🏇 严纲【冲阵】可再移动`); }
+		}
+		function tryShan(unit, target, dmg, card, finish) {
+			const shan = (game.hands[target.team] || []).filter(c => c.name === '闪');
+			if (!shan.length) return null;
+			const ignore = (unit.skill === '潜龙' && unit.hp <= unit.maxHp / 2 && !unit._firstAttackDone) || (unit.skill === '奔袭梁' && !unit._firstAttackDone && unit._movedSteps > 0);
+			if (ignore) return null;
+			if (game.isHuman(target.team)) {
+				pendingResponse = {
+					targetPlayer: game.controllers[target.team], resume: (used, ci) => {
+						if (used) { const sc = (game.hands[target.team] || []).filter(c => c.name === '闪'); if (sc[ci]) consume(target.team, sc[ci]); bMsg(`🛡️ ${target.name}出闪抵消！`); if (target.skill === '雪战') draw(target.team, 1); }
+						else dealDmg(target, dmg, unit, card);
+						if (finish) finish();
+						broadcast(); pumpAI();
+					}
+				};
+				sendTo(game.controllers[target.team], { type: 'needResponse', rt: 'shan', tn: target.name, an: unit.name, cn: card ? card.name : '杀', dmg, cards: shan });
+				return 'paused';
+			}
+			consume(target.team, shan[0]); bMsg(`🛡️ ${target.name}出闪抵消！`);
+			if (target.skill === '雪战') draw(target.team, 1);
+			return 'blocked';
+		}
+
+		/* ==================== 伤害/技能 ==================== */
+		function calcAttackDmg(u, t, c) {
+			let d = c.dmg; if (u.skill === '百骑' || u.skill === '奔雷') return 1;
+			if (u.weapon && u.weapon.bonusDmg) d++; if (u.weapon2 && u.weapon2.bonusDmg) d++;
+			if (game.lastElem === 'jin' && c.fire) d++; const s = u.skill;
+			if (s === '武圣' && u.hp > t.hp) d++; if (s === '恶来' && u.hp <= u.maxHp / 2) d += 2; if (s === '狂战' && u.hp <= u.maxHp / 2) d++;
+			if (s === '苦肉') { u.hp--; d += 2; bMsg(`💔 黄盖【苦肉】`); if (u.hp <= 0) { handleDying(u, null); return 0 } }
+			if (['无双', '霸王', '投鞭', '万人敌'].includes(s)) d++;
+			if (['猛将', '忠勇', '先登', '骁骑', '舞剑', '蛮勇', '蛮力', '三尖', '三尖刀', '承志', '突骑'].includes(s)) d++;
+			if (s === '勇烈' && u.hp > t.hp) d++; if (s === '除害' && u.killCount === 1) d++;
+			if (s === '奔袭' && u._movedSteps > 0) d += Math.min(2, Math.floor(u._movedSteps / 2));
+			if (s === '猎骑') d += Math.min(2, u._movedSteps);
+			if (s === '忠义' && u.hp <= u.maxHp / 2) d++; if (s === '叛勇' && u.hp <= u.maxHp / 2) d += 2;
+			if (s === '枭姬' && u.weapon) d++; if (s === '铸兵' && u.weapon) d++; return d;
+		}
+		function calcFireDmg(u, t, c) {
+			let d = c.dmg; if (u.weapon && u.weapon.bonusDmg) d++; if (game.lastElem === 'jin') d++;
+			const s = u.skill; if (['火神', '傲才', '绝舞', '蛮阵', '谋主', '谋略', '连环'].includes(s)) d++; return d;
+		}
+		function applyDefenseCheck(u, t, c) {
+			let b = false; const ig = ['陷阵', '铁骑'].includes(u.skill);
+			if (t.armor && !ig) {
+				if (t.armor.blockJin && c.elem === 'jin' && !c.fire) { b = true; bMsg('🛡️仁王盾！') }
+				if (t.armor.blockRate && !b && Math.random() < t.armor.blockRate) { b = true; bMsg('🛡️八卦阵！') }
+			}
+			if (t.skill === '藤甲兵' && !c.fire && !b) { b = true; bMsg('🛡️藤甲兵免疫！') }
+			if (t.skill === '巧变' && !t._firstHitBlocked) { t._firstHitBlocked = true; b = true; bMsg('🛡️张郃【巧变】') }
+			if (t.skill === '铁壁' && t.hp <= t.maxHp / 2 && !t._firstHitBlocked) { t._firstHitBlocked = true; b = true; bMsg('🛡️钟离昧【铁壁】') }
+			return b;
+		}
+		function applyDefenseReduction(t, d) {
+			const s = t.skill;
+			if (['裸衣', '蛮王', '守信', '守城', '铁盾', '稳进', '守边', '白波'].includes(s)) d = Math.max(1, d - 1);
+			if (s === '枭姬' && t.armor) d = Math.max(1, d - 1);
+			if (s === '叛勇') d += 1; if (s === '守土') d = Math.max(1, d - 1); return d;
+		}
+		function dealDmg(t, amt, atk, card) {
+			if (t.skill === '守边') amt = Math.max(1, amt - 1);
+			if (t.skill !== '护驾') {
+				for (const n of hexNeighbors(t.x, t.y)) {
+					const al = game.unitAt(n.x, n.y);
+					if (al && al.team === t.team && al.skill === '护驾' && al.hp > 0) { al.hp -= Math.max(1, amt - 1); bMsg(`🛡️ 杨奉【护驾】代挡`); amt = 0; if (al.hp <= 0) handleDying(al, atk); break; }
+				}
+			}
+			if (amt <= 0) return;
+			t.hp -= amt; bMsg(`💥 ${t.name}受${amt}点伤害！`);
+			if (atk && t.skill === '拔矢' && t.hp > 0 && Math.random() < .5) { atk.hp--; bMsg(`⚡夏侯反弹`); if (atk.hp <= 0) handleDying(atk, null); }
+			if (atk && t.skill === '暴虐' && t.hp > 0 && Math.random() < .3) { atk.hp--; bMsg(`⚡董卓反弹`); if (atk.hp <= 0) handleDying(atk, null); }
+			if (t.skill === '铁盾' && t.hp <= 0 && atk) { atk.hp--; bMsg(`⚡尉迟同归`); if (atk.hp <= 0) handleDying(atk, null); }
+			if (atk && t.hp > 0) {
+				if (atk.skill === '离间' && Math.random() < .3) { t.skipped = true; bMsg(`💫貂蝉【离间】`); }
+				if (atk.skill === '毒泉' && Math.random() < .3) { t._drawReduce = true; bMsg(`☠️朵思【毒泉】`); }
+				if (atk.skill === '破阵' && t.armor) { t.armor = null; bMsg(`💥桥蕤【破阵】`); }
+				if (atk.skill === '飞刀' && Math.random() < .3 && (game.hands[t.team] || []).length) { consume(t.team, game.hands[t.team][0]); bMsg(`🗡️祝融弃牌`); }
+				if (atk.skill === '万人敌' && (game.hands[t.team] || []).length) { consume(t.team, game.hands[t.team][0]); bMsg(`⚔️邓羌弃牌`); }
+				if (atk.skill === '霸王') {
+					const nx = t.x + Math.sign(t.x - atk.x), ny = t.y + Math.sign(t.y - atk.y);
+					if (nx >= 0 && nx < MAP && ny >= 0 && ny < MAP && !game.unitAt(nx, ny)) { t.x = nx; t.y = ny; bMsg(`💥项羽击退`); }
+				}
+				if (atk.skill === '三尖') {
+					const b2 = game.unitAt(t.x + Math.sign(t.x - atk.x), t.y + Math.sign(t.y - atk.y));
+					if (b2 && b2.team !== atk.team) { b2.hp--; bMsg(`🔱纪灵穿透`); if (b2.hp <= 0) handleDying(b2, atk); }
+				}
+			}
+			if (t.skill === '鬼才' && t.hp > 0 && Math.random() < .5) {
+				const al = hexNeighbors(t.x, t.y).map(n => game.unitAt(n.x, n.y)).filter(a => a && a.team === t.team && a !== t && a.hp > 0);
+				if (al.length) { t.hp += amt; al[0].hp -= amt; bMsg(`🔮司马懿转移`); if (al[0].hp <= 0) handleDying(al[0], atk); }
+			}
+			if (t.hp <= 0) handleDying(t, atk);
+		}
+		function handleDying(t, atk) {
+			const peaches = (game.hands[t.team] || []).filter(c => c.name === '桃');
+			const need = 1 - t.hp;
+			if (need > 0 && peaches.length >= need) {
+				if (game.isHuman(t.team)) {
+					pendingResponse = {
+						targetPlayer: game.controllers[t.team], resume: (used) => {
+							if (used) { for (let i = 0; i < need; i++)consume(t.team, peaches[i]); t.hp = 1; bMsg(`🍑 ${t.name}获救！`); }
+							else { bMsg(`☠️ ${t.name}阵亡！`); killReward(atk); }
+							checkWin(); broadcast(); pumpAI();
+						}
+					};
+					sendTo(game.controllers[t.team], { type: 'needResponse', rt: 'peach', tn: t.name, need, cards: peaches });
+					return;
+				}
+				for (let i = 0; i < need; i++)consume(t.team, peaches[i]); t.hp = 1; bMsg(`🍑 ${t.name}获救！`); return;
+			}
+			bMsg(`☠️ ${t.name}阵亡！`); killReward(atk); checkWin();
+		}
+		function killReward(atk) {
+			if (!atk) return;
+			if (atk.skill === '奸雄') { draw(atk.team, 2); bMsg(`🎴曹操摸2张`); }
+			if (atk.skill === '骁将') atk.hp = Math.min(atk.maxHp, atk.hp + 1);
+			if (atk.skill === '野心') { draw(atk.team, 1); atk.moved = false; }
+			if (atk.skill === '蛮勇') draw(atk.team, 1);
+			if (atk.skill === '燕归' || atk.skill === '继志') atk.moved = false;
+		}
+		function checkTrap(u) { const k = `${u.x},${u.y}`; if (game.terrain[k]) { const n = game.terrain[k]; delete game.terrain[k]; bMsg(`💥${u.name}触发【${n}】`); dealDmg(u, 2, null, null); } }
+		function checkWin() {
+			if (game.over) return;
+			const alive = game.activeFactions.filter(f => game.alive(f).length > 0);
+			let winner = null, isTeam = false;
+			if (alive.length <= 1) winner = alive[0] || null;
+			else {
+				const ns = alive.filter(f => game.teamOf(f) !== 'S');
+				if (ns.length > 0 && ns.length === alive.length) { const t = game.teamOf(ns[0]); if (ns.every(f => game.teamOf(f) === t)) { winner = ns[0]; isTeam = true; } }
+			}
+			if (winner || alive.length <= 1) {
+				game.over = true;
+				const data = { winner, isTeam, fname: winner ? FNAME[winner] : '无', color: winner ? FCOLOR[winner] : '#999', human: winner ? game.isHuman(winner) : false };
+				socket.emit('toAll', { type: 'gameOver', ...data }); showGameOver(data);
+			}
+		}
+		function showGameOver(d) {
+			const t = document.getElementById('over-title'), p = document.getElementById('over-desc');
+			t.innerText = d.winner ? `${d.fname}获胜！` : '同归于尽'; t.style.color = d.color;
+			p.innerText = d.winner ? (d.human ? '恭喜获胜！' : 'AI势力席卷八荒！') : '战场已无一人…';
+			setTimeout(() => document.getElementById('over-panel').style.display = 'flex', 800);
+		}
+
+		/* ==================== 响应 ==================== */
+		function showResponsePrompt(d) {
+			document.getElementById('resp-title').innerText = d.rt === 'shan' ? '⚠️ 是否出闪？' : '💀 濒死求救！';
+			document.getElementById('resp-desc').innerHTML = d.rt === 'shan'
+				? `${d.an} → <b style="color:#ffd700">${d.tn}</b><br>【${d.cn}】将造成 ${d.dmg} 点伤害`
+				: `<b style="color:#ffd700">${d.tn}</b> 即将阵亡！需要 ${d.need} 个桃`;
+			const c = document.getElementById('resp-cards'); c.innerHTML = '';
+			(d.cards || []).forEach((card, i) => {
+				const div = document.createElement('div'); div.className = `card elem-${card.elem === 'equip' ? 'equip' : card.elem}`;
+				div.innerHTML = `<div class="card-top">${card.name}</div><div class="card-desc">${card.desc}</div>`;
+				div.onclick = () => respChoose(true, i); c.appendChild(div);
+			});
+			document.getElementById('resp-skip').innerText = d.rt === 'shan' ? '不出闪' : '放弃救援';
+			document.getElementById('response-overlay').style.display = 'flex';
+			updateEndBtn();
+		}
+		function respChoose(use, ci) {
+			document.getElementById('response-overlay').style.display = 'none';
+			if (NET.isHost) resolveResponse(use, ci);
+			else socket.emit('toHost', { type: 'response', use, cardIdx: ci });
+		}
+		function resolveResponse(use, ci) {
+			if (!pendingResponse) return;
+			const r = pendingResponse; pendingResponse = null;
+			r.resume(use, ci);
+			updateEndBtn();
+		}
+		function pumpAI() { if (pendingResponse || game.over) return; const c = aiCont; aiCont = null; if (c) c(); }
+
+		/* ==================== AI ==================== */
+		function aiTurnHost(f) {
+			if (game.over) return;
+			aiQueue = game.alive(f).slice(); aiStep = 0; aiNext();
+		}
+		function aiNext() {
+			if (game.over || pendingResponse) return;
+			if (aiStep >= aiQueue.length) { setTimeout(() => { if (!game.over && !pendingResponse) doEndTurn(); }, 400); return; }
+			const u = aiQueue[aiStep++];
+			aiAct(u, () => setTimeout(aiNext, 350));
+		}
+		function aiAct(unit, next) {
+			if (unit.hp <= 0 || game.over || unit._noAttack) { next(); return; }
+			const enemies = game.allAlive().filter(u => u.team !== unit.team && !game.sameTeam(unit.team, u.team));
+			if (!enemies.length) { next(); return; }
+			let near = null, md = 999; enemies.forEach(e => { const d = hexDist(unit.x, unit.y, e.x, e.y); if (d < md) { md = d; near = e; } });
+			let pos = { x: unit.x, y: unit.y };
+			for (let s = 0; s < game.moveSteps(unit); s++) {
+				const nb = hexNeighbors(pos.x, pos.y); let best = null, bd = hexDist(pos.x, pos.y, near.x, near.y);
+				for (const n of nb) {
+					if (game.unitAt(n.x, n.y)) continue;
+					if (game.terrain[`${n.x},${n.y}`] && !['骑袭', '白衣', '楼船', '守城', '蛮战', '蛮力', '蛮骑'].includes(unit.skill)) continue;
+					const d = hexDist(n.x, n.y, near.x, near.y); if (d < bd) { bd = d; best = n; }
+				}
+				if (best) pos = best;
+			}
+			if (pos.x !== unit.x || pos.y !== unit.y) {
+				unit.x = pos.x; unit.y = pos.y; unit.moved = true; unit._movedSteps = hexDist(unit.x, unit.y, pos.x, pos.y);
+				if (!['骑袭', '白衣', '楼船', '守城', '蛮战', '蛮力', '蛮骑'].includes(unit.skill)) checkTrap(unit);
+			}
+			broadcast();
+			setTimeout(() => {
+				if (unit.hp <= 0 || game.over) { next(); return; }
+				if (near.hp > 0 && hexDist(unit.x, unit.y, near.x, near.y) <= game.atkRange(unit)) {
+					let dmg = calcAttackDmg(unit, near, { dmg: 1, fire: false, elem: 'jin' });
+					if (dmg > 0) {
+						const blocked = applyDefenseCheck(unit, near, { elem: 'jin', fire: false });
+						if (!blocked) {
+							const r = tryShan(unit, near, dmg, null, () => { unit.attacked = true; });
+							if (r === 'paused') { aiCont = next; broadcast(); return; }
+							if (r !== 'blocked') { dealDmg(near, dmg, unit, null); if (pendingResponse) { unit.attacked = true; aiCont = next; broadcast(); return; } }
+						}
+					}
+					unit.attacked = true;
+				}
+				broadcast(); next();
+			}, 300);
+		}
+
+		/* ==================== 渲染 ==================== */
+		const cvs = document.createElement('canvas'), ctx = cvs.getContext('2d');
+		document.body.prepend(cvs);
+		function resize() { cvs.width = innerWidth; cvs.height = innerHeight; render(); }
+		addEventListener('resize', resize);
+		function hexPx(x, y) { const w = HEX * Math.sqrt(3), h = HEX * 2; const ox = (cvs.width - 220 - MAP * w) / 2 + w / 2, oy = (cvs.height - MAP * h * .75) / 2 + h / 2 + 10; return { px: ox + x * w + (y % 2) * (w / 2), py: oy + y * (h * .75) } }
+		function pxToHex(mx, my) { let best = null, bd = Infinity; for (let y = 0; y < MAP; y++)for (let x = 0; x < MAP; x++) { const { px, py } = hexPx(x, y); const d = Math.hypot(mx - px, my - py); if (d < HEX * .95 && d < bd) { bd = d; best = { x, y } } } return best }
+		function render() {
+			if (!ctx) return;
+			ctx.clearRect(0, 0, cvs.width, cvs.height); ctx.fillStyle = '#1a1a2e'; ctx.fillRect(0, 0, cvs.width, cvs.height);
+			if (!game.units.length) return;
+			const su = sel.unit, sc = myHand.find(c => c.id === sel.card);
+			const myTurn = game.curFaction === NET.myFaction;
+			for (let y = 0; y < MAP; y++)for (let x = 0; x < MAP; x++) {
+				const { px, py } = hexPx(x, y); const key = `${x},${y}`; let fill = '#2a2a4a', stroke = '#4a4a6a', lw = 1.5;
+				if (game.terrain[key]) { fill = '#4a1a1a'; stroke = '#c0392b'; lw = 2 }
+				if (su && myTurn && su.team === NET.myFaction) {
+					const d = hexDist(su.x, su.y, x, y);
+					if (!su.moved && d <= game.moveSteps(su) && !game.unitAt(x, y)) { fill = '#1a4a3a'; stroke = '#2ecc71' }
+					if (sc && (sc.type === 'attack' || sc.type === 'fire_attack')) {
+						const t = game.unitAt(x, y);
+						if (t && t.team !== su.team && !game.sameTeam(su.team, t.team) && d <= game.atkRange(su)) { fill = '#4a1a2a'; stroke = '#e74c3c' }
+					}
+					if (sc && ['weapon', 'armor', 'heal'].includes(sc.type) && x === su.x && y === su.y) { fill = '#1a3a4a'; stroke = '#3498db' }
+					if (sc && sc.type === 'terrain' && !game.unitAt(x, y)) { fill = '#3a3a1a'; stroke = '#f39c12' }
+				}
+				ctx.beginPath(); for (let i = 0; i < 6; i++) { const a = Math.PI / 3 * i - Math.PI / 6; i === 0 ? ctx.moveTo(px + HEX * Math.cos(a), py + HEX * Math.sin(a)) : ctx.lineTo(px + HEX * Math.cos(a), py + HEX * Math.sin(a)) }
+				ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.stroke();
+			}
+			game.units.forEach(u => {
+				if (u.hp <= 0) return; const { px, py } = hexPx(u.x, u.y), r = HEX * .55;
+				ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fillStyle = (sel.unit === u) ? '#f1c40f' : FCOLOR[u.team]; ctx.fill();
+				ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+				ctx.fillStyle = '#fff'; ctx.font = `bold ${HEX * .35}px STKaiti`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+				ctx.fillText(u.name[0], px, py);
+				const bw = HEX * 1.1, bx = px - bw / 2, by = py + r + 3;
+				ctx.fillStyle = '#111'; ctx.fillRect(bx, by, bw, 4);
+				ctx.fillStyle = u.hp / u.maxHp > .3 ? '#2ecc71' : '#e74c3c'; ctx.fillRect(bx, by, bw * (u.hp / u.maxHp), 4);
+				ctx.font = '10px serif'; if (u.weapon) ctx.fillText('⚔', px - r * .7, py - r * .7); if (u.armor) ctx.fillText('🛡', px + r * .7, py - r * .7);
+				const t = game.teamOf(u.team); if (t !== 'S') { ctx.beginPath(); ctx.arc(px, py, r + 3, 0, Math.PI * 2); ctx.strokeStyle = TEAM_COLOR[t]; ctx.lineWidth = 2; ctx.stroke() }
+			});
+		}
+		function renderHand() {
+			const h = document.getElementById('hand-area'); h.innerHTML = '';
+			if (game.curFaction !== NET.myFaction || game.over) return;
+			myHand.forEach(c => {
+				const isEq = ['weapon', 'armor'].includes(c.type);
+				const d = document.createElement('div');
+				d.className = `card elem-${isEq ? 'equip' : c.elem} ${sel.card === c.id ? 'selected' : ''}`;
+				d.innerHTML = `<div class="card-top">${c.name}<div class="card-elem">${isEq ? '⚙️' : '[' + c.elem.toUpperCase() + ']'}</div></div><div class="card-desc">${c.desc}</div>`;
+				d.onclick = () => { sel.card = (sel.card === c.id) ? null : c.id; renderHand(); render(); };
+				h.appendChild(d);
+			});
+		}
+		function renderEquipPanel() {
+			const list = document.getElementById('equip-list'); if (!list) return; list.innerHTML = '';
+			game.units.forEach(u => {
+				if (u.hp <= 0) return;
+				const d = document.createElement('div'); d.className = 'eq-unit' + (u._open ? ' open' : '');
+				const who = game.isHuman(u.team) ? '玩家' : 'AI'; const t = game.teamOf(u.team);
+				d.innerHTML = `<div class="eq-head"><span class="eq-dot" style="background:${FCOLOR[u.team]}"></span><span class="eq-name">${u.name}</span><span style="color:${TEAM_COLOR[t]};font-size:9px">[${TEAM_NAME[t][0]}]</span><span style="color:#888;font-size:10px">${who}</span><span class="eq-hp">❤${u.hp}/${u.maxHp}</span></div><div class="eq-icons">${u.weapon ? '⚔️' + u.weapon.name : '⚔️无'} ${u.armor ? '🛡️' + u.armor.name : '🛡️无'}</div><div class="eq-detail"><span class="sk">【${u.skill}】</span>${u.sdesc}<br><span class="wp">⚔️</span>${u.weapon ? u.weapon.desc : '无'}<br><span class="ar">🛡️</span>${u.armor ? u.armor.desc : '无'}</div>`;
+				d.onclick = () => { u._open = !u._open; renderEquipPanel() };
+				list.appendChild(d);
+			});
+		}
+		function buildBadges() {
+			const row = document.getElementById('badge-row'); row.innerHTML = '';
+			game.activeFactions.forEach(f => { const s = document.createElement('span'); s.className = 'fbadge'; s.id = 'bd-' + f; s.style.background = FCOLOR[f]; row.appendChild(s) });
+		}
+		function updateTop() {
+			const f = game.curFaction; if (!f) return;
+			const who = game.isHuman(f) ? '玩家' : 'AI';
+			document.getElementById('turn-info').innerText = `回合${game.turnCount}：${FNAME[f]}（${who}）`;
+			document.getElementById('turn-info').style.color = FCOLOR[f];
+			game.activeFactions.forEach(fa => {
+				const bd = document.getElementById('bd-' + fa); if (!bd) return;
+				const n = game.alive(fa).length; const tag = game.isHuman(fa) ? 'P' : 'AI'; const t = game.teamOf(fa);
+				bd.innerText = `${FNAME[fa][0]}·${tag}${t !== 'S' ? '·' + TEAM_NAME[t][0] : ''}×${n}`;
+				bd.className = 'fbadge' + (n === 0 ? ' dead' : ''); bd.style.background = FCOLOR[fa];
+			});
+		}
+		cvs.addEventListener('click', e => {
+			if (game.over || pendingResponse) return;
+			if (game.curFaction !== NET.myFaction) return;
+			const rect = cvs.getBoundingClientRect(); const hex = pxToHex(e.clientX - rect.left, e.clientY - rect.top); if (!hex) return;
+			const clicked = game.unitAt(hex.x, hex.y);
+			const card = myHand.find(c => c.id === sel.card);
+			if (!card && clicked && clicked.team === NET.myFaction) { sel.unit = clicked; sel.card = null; render(); renderHand(); return; }
+			if (!sel.unit) { showMsg('请先选择己方武将'); return; }
+			const su = sel.unit; if (su.hp <= 0) return;
+			if (!card && !clicked) {
+				if (su.moved) { showMsg('已移动'); return; }
+				if (hexDist(su.x, su.y, hex.x, hex.y) > game.moveSteps(su)) { showMsg('超出移动范围'); return; }
+				sendAction({ type: 'move', fx: su.x, fy: su.y, tx: hex.x, ty: hex.y });
+				sel.unit = null; render(); return;
+			}
+			if (card) {
+				sendAction({ type: 'useCard', cid: card.id, ux: su.x, uy: su.y, tx: hex.x, ty: hex.y });
+				sel.card = null; renderHand(); render();
+			}
+		});
+		const tooltip = document.getElementById('tooltip');
+		cvs.addEventListener('mousemove', e => {
+			const rect = cvs.getBoundingClientRect(); const hex = pxToHex(e.clientX - rect.left, e.clientY - rect.top);
+			const u = hex ? game.unitAt(hex.x, hex.y) : null;
+			if (u) {
+				tooltip.style.display = 'block';
+				const who = game.isHuman(u.team) ? '玩家' : 'AI'; const t = game.teamOf(u.team);
+				tooltip.innerHTML = `<b style="color:${FCOLOR[u.team]};font-size:15px">${u.name}</b> ${FNAME[u.team]}（${who}）<br>队伍：<span style="color:${TEAM_COLOR[t]}">${TEAM_NAME[t]}</span><br>❤️${u.hp}/${u.maxHp}<br><span style="color:#7bed9f">【${u.skill}】</span>${u.sdesc}<br>${u.weapon ? '⚔️' + u.weapon.name : '⚔️无'}<br>${u.armor ? '🛡️' + u.armor.name : '🛡️无'}`;
+				let tx = e.clientX + 15, ty = e.clientY + 15; if (tx + 260 > innerWidth) tx = e.clientX - 270; if (ty + 180 > innerHeight) ty = e.clientY - 180;
+				tooltip.style.left = tx + 'px'; tooltip.style.top = ty + 'px';
+			}
+			else tooltip.style.display = 'none';
+		});
+		cvs.addEventListener('mouseleave', () => tooltip.style.display = 'none');
+
+		/* ==================== 聊天系统 ==================== */
+		const CHAT = {
+			channel: 'all',      // 当前发送频道: all / team / lobby
+			viewTab: 'all',      // 当前查看标签: all / team / lobby
+			history: [],         // {ch, name, text, time, isSys}
+			unread: { all: 0, team: 0, lobby: 0 },
+			minimized: true
+		};
+
+		function toggleChat() {
+			CHAT.minimized = !CHAT.minimized;
+			const panel = document.getElementById('chat-panel');
+			const icon = document.getElementById('chat-toggle-icon');
+			panel.classList.toggle('minimized', CHAT.minimized);
+			icon.innerText = CHAT.minimized ? '▲' : '▼';
+			if (!CHAT.minimized) {
+				// 展开时清除当前tab未读
+				CHAT.unread[CHAT.viewTab] = 0;
+				updateChatTabs();
+				scrollChatBottom();
+			}
+		}
+
+		function switchChatTab(tab) {
+			CHAT.viewTab = tab;
+			document.querySelectorAll('.chat-tab').forEach(t => t.classList.toggle('active', t.dataset.ch === tab));
+			CHAT.unread[tab] = 0;
+			updateChatTabs();
+			renderChatMessages();
+			scrollChatBottom();
+		}
+
+		function cycleChannel() {
+			const channels = ['all', 'team', 'lobby'];
+			const labels = { all: '全部', team: '队伍', lobby: '大厅' };
+			let idx = channels.indexOf(CHAT.channel);
+			idx = (idx + 1) % channels.length;
+			CHAT.channel = channels[idx];
+			document.getElementById('chat-channel-btn').innerText = labels[CHAT.channel];
+			document.getElementById('chat-input').placeholder = `[${labels[CHAT.channel]}] 输入消息…`;
+		}
+
+		function sendChat() {
+			const input = document.getElementById('chat-input');
+			const text = input.value.trim();
+			if (!text) return;
+			input.value = '';
+
+			const msg = { type: 'chatMsg', ch: CHAT.channel, name: NET.myName, text };
+
+			// 本地立即显示
+			addChatMessage(CHAT.channel, NET.myName, text, false);
+
+			// 通过现有 toAll 广播（房主也走这个通道）
+			socket.emit('toAll', msg);
+		}
+
+		// 接收聊天消息（在 handleHostMsg 中添加 case）
+		// ★ 需要在 handleHostMsg 的 switch 中加入:
+		//   case 'chatMsg': addChatMessage(d.ch, d.name, d.text, false); break;
+
+		function addChatMessage(ch, name, text, isSys) {
+			const entry = { ch, name, text, time: new Date(), isSys };
+			CHAT.history.push(entry);
+			if (CHAT.history.length > 200) CHAT.history.shift(); // 限制历史条数
+
+			// 更新未读
+			if (CHAT.minimized || CHAT.viewTab !== ch) {
+				if (ch === 'all') { CHAT.unread.all++; CHAT.unread.lobby++; }
+				else { CHAT.unread[ch]++; CHAT.unread.all++; }
+			}
+
+			updateChatTabs();
+			if (CHAT.viewTab === ch || ch === 'all' && CHAT.viewTab === 'all') {
+				renderChatMessages();
+				scrollChatBottom();
+			}
+		}
+
+		function renderChatMessages() {
+			const container = document.getElementById('chat-messages');
+			const filtered = CHAT.history.filter(m =>
+				CHAT.viewTab === 'all' ? true : m.ch === CHAT.viewTab || m.ch === 'all'
+			);
+			container.innerHTML = filtered.map(m => {
+				const cls = m.isSys ? 'sys' : (m.ch === 'team' ? 'team' : 'all');
+				const nameColor = m.isSys ? '#f39c12' : '#ffd700';
+				const prefix = m.ch === 'team' ? '[队]' : (m.ch === 'lobby' ? '[厅]' : '');
+				return `<div class="chat-line ${cls}"><span class="cname" style="color:${nameColor}">${prefix}${m.name}：</span>${escapeHtml(m.text)}</div>`;
+			}).join('');
+		}
+
+		function updateChatTabs() {
+			document.querySelectorAll('.chat-tab').forEach(t => {
+				const ch = t.dataset.ch;
+				const dot = t.querySelector('.unread');
+				if (dot) dot.remove();
+				if (CHAT.unread[ch] > 0 && CHAT.viewTab !== ch) {
+					const span = document.createElement('span');
+					span.className = 'unread';
+					t.appendChild(span);
+				}
+			});
+		}
+
+		function scrollChatBottom() {
+			const c = document.getElementById('chat-messages');
+			requestAnimationFrame(() => c.scrollTop = c.scrollHeight);
+		}
+
+		function escapeHtml(s) {
+			return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+		}
+
+		// ★ 关键：将聊天消息接入现有消息分发
+		const _origHandleHostMsg = handleHostMsg;
+		handleHostMsg = function (d) {
+			if (d.type === 'chatMsg') { addChatMessage(d.ch, d.name, d.text, false); return; }
+			_origHandleHostMsg(d);
+		};
+	</script>
+</body>
+
+</html>
